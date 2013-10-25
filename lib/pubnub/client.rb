@@ -416,6 +416,8 @@ module Pubnub
 
               if !request.callback.nil?
                 request.envelopes.each do |envelope|
+                  envelope.origin = request.origin
+                  $log.debug "Response Origin: #{envelope.origin}"
                   request.callback.call envelope
                 end
               else
