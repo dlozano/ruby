@@ -1,12 +1,12 @@
 # -*- encoding: utf-8 -*-
 
 Gem::Specification.new do |s|
-  s.name = 'pubnub'
-  s.version = '3.4'
+  s.name = 'pubnub-multi-ha'
+  s.version = '3.4ha'
 
   s.required_rubygems_version = Gem::Requirement.new('>= 0') if s.respond_to? :required_rubygems_version=
   s.authors = ['PubNub']
-  s.date = '2013-10-19'
+  s.date = '2013-10-24'
   s.description = 'Ruby anywhere in the world in 250ms with PubNub!'
   s.email = 'support@pubnub.com'
   s.files = `git ls-files`.split("\n")
