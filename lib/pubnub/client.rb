@@ -30,7 +30,7 @@ module Pubnub
 
     attr_accessor :uuid, :cipher_key, :host, :query, :response, :timetoken, :url, :operation, :callback, :publish_key, :subscribe_key, :secret_key, :channel, :jsonp, :message, :ssl, :port
     attr_accessor :close_connection, :history_limit, :history_count, :history_start, :history_end, :history_reverse, :session_uuid, :last_timetoken, :origin, :error
-
+    attr_accessor :ha_origins
 
     DEFAULT_CONNECT_CALLBACK = lambda { |msg| $log.info "CONNECTED: #{msg}" }
     DEFAULT_ERROR_CALLBACK = lambda { |msg| $log.error "AN ERROR OCCURRED: #{msg}" }
@@ -67,7 +67,18 @@ module Pubnub
       @port             = options[:port]
       @url              = options[:url]
       @origin           = options[:origin]
-      @origin           = DEFAULT_ORIGIN unless @origin
+
+      if @origin.present?
+        if @origin.class == Array
+          @ha_origins = @origin
+          @origin = @origin[0].present? ? @origin[0] : DEFAULT_ORIGIN
+        else
+          @origin = DEFAULT_ORIGIN unless @origin
+        end
+      end
+
+
+
       @query            = options[:query]
 
       @http_sync        = options[:http_sync]
@@ -97,7 +108,22 @@ module Pubnub
       options[:callback] = block if block_given?
       options = merge_options(options, 'publish')
       verify_operation('publish', options)
+
       start_request options
+
+      if @ha_origins.present?
+
+        options[:channel] = options[:channel] + "-ha"
+        u = UUID.generate.to_s
+
+        @ha_origins.each do |ha_origin|
+          options[:message] = {"u" => u, "o" => ha_origin, "payload" => options[:message]}
+
+          options[:origin] = ha_origin
+          start_request options
+        end
+      end
+
 
     end
 
@@ -447,6 +473,9 @@ module Pubnub
     end
 
     def send_request(request)
+
+      puts "Request Origin: #{request.origin}"
+
       if %w(subscribe presence).include? request.operation
         unless @subscribe_connection
           @subscribe_connection = EM::HttpRequest.new(request.origin, :connect_timeout => 370, :inactivity_timeout => 370)
