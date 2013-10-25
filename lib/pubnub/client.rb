@@ -30,7 +30,7 @@ module Pubnub
 
     attr_accessor :uuid, :cipher_key, :host, :query, :response, :timetoken, :url, :operation, :callback, :publish_key, :subscribe_key, :secret_key, :channel, :jsonp, :message, :ssl, :port
     attr_accessor :close_connection, :history_limit, :history_count, :history_start, :history_end, :history_reverse, :session_uuid, :last_timetoken, :origin, :error
-    attr_accessor :ha_origins
+    attr_accessor :ha_origins, :connection_pool
 
     DEFAULT_CONNECT_CALLBACK = lambda { |msg| $log.info "CONNECTED: #{msg}" }
     DEFAULT_ERROR_CALLBACK = lambda { |msg| $log.error "AN ERROR OCCURRED: #{msg}" }
@@ -39,6 +39,7 @@ module Pubnub
       $log = options[:logger]
       $log = Logger.new('pubnub.log', 0, 100 * 1024 * 1024) unless $log
 
+      @connection_pool = Hash.new
       @subscriptions = Array.new
 
       @subscription_request = nil
@@ -115,9 +116,10 @@ module Pubnub
 
         options[:channel] = options[:channel] + "-ha"
         u = UUID.generate.to_s
+        m = options[:message]
 
         @ha_origins.each do |ha_origin|
-          options[:message] = {"u" => u, "o" => ha_origin, "payload" => options[:message]}
+          options[:message] = {"u" => u, "tx" => ha_origin, "payload" => m }
 
           options[:origin] = ha_origin
           start_request options
@@ -488,11 +490,13 @@ module Pubnub
         end
 
         @subscribe_connection.get :path => request.path, :query => request.query, :keepalive => true
+
       else
-        unless @connection
-          @connection = EM::HttpRequest.new request.origin
+
+        if !@connection_pool.has_key?(request.origin) || (@connection_pool.has_key?(request.origin) &&  @connection_pool[request.origin].deferred)
+          @connection_pool[request.origin] = EM::HttpRequest.new request.origin
         end
-        @connection.get :path => request.path, :query => request.query, :keepalive => true
+        @connection_pool[request.origin].get :path => request.path, :query => request.query, :keepalive => true
       end
     end
 
