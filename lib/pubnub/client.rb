@@ -326,6 +326,8 @@ module Pubnub
                   request.handle_response(http)
                   request.envelopes.each do |envelope|
                     $log.debug 'CALLING PARAMETER CALLBACK'
+                    envelope.origin = request.origin
+                    $log.debug "Response Origin: #{envelope.origin}"
                     request.callback.call envelope
                   end
                 end
@@ -476,7 +478,7 @@ module Pubnub
 
     def send_request(request)
 
-      puts "Request Origin: #{request.origin}"
+      $log.debug "Request Origin: #{request.origin}"
 
       if %w(subscribe presence).include? request.operation
         unless @subscribe_connection
