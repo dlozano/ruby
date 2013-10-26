@@ -313,33 +313,11 @@ module Pubnub
 
               request.envelopes.each do |envelope|
 
-                if @ha_origins.present? && %w(subscribe).include?(request.operation)
-                  envelope.u = envelope.message["u"]
-                  envelope.origin = envelope.message["tx"]
-
-                  if @duplicate_table.has_key?(envelope.u)
-                    puts "Throwing away: #{envelope.origin} : #{envelope.u}"
-                    @duplicate_table[envelope.u] = Time.now
-                    break
-                  end
-
-                  @duplicate_table[envelope.u] = Time.now
-
-                  @duplicate_table.each_pair do |k, v|
-                    if Time.now - v > DUPLICATE_EXPIRATION_SECONDS
-                      @duplicate_table.delete(k)
-                    end
-                  end
-
-                  envelope.message = envelope.message["payload"]
-
-                else
-
-                  envelope.origin = request.origin
-                end
+                dupe = manage_duplicates(envelope, request)
 
                 $log.debug "Response Origin: #{envelope.origin}"
-                request.callback.call envelope
+
+                request.callback.call envelope unless dupe
               end
             else
               if %w(publish leave here_now time).include? request.operation
@@ -398,6 +376,35 @@ module Pubnub
       end
     end
 
+    def manage_duplicates(envelope, request)
+      dupe = false
+
+      if @ha_origins.present? && %w(subscribe).include?(request.operation)
+        envelope.u = envelope.message["u"]
+        envelope.origin = envelope.message["tx"]
+
+        if @duplicate_table.has_key?(envelope.u)
+          $log.debug "Throwing away: #{envelope.origin} : #{envelope.u}"
+          dupe = true
+        end
+
+        @duplicate_table[envelope.u] = Time.now
+
+        @duplicate_table.each_pair do |k, v|
+          if Time.now - v > DUPLICATE_EXPIRATION_SECONDS
+            @duplicate_table.delete(k)
+          end
+        end
+
+        envelope.message = envelope.message["payload"]
+
+      else
+
+        envelope.origin = request.origin
+      end
+      dupe
+    end
+
     def async_start_request(options, request)
       start_em_if_not_running
 
@@ -436,9 +443,15 @@ module Pubnub
                   $log.debug 'HANDLED RESPONSE'
                   if is_update?(@subscription_request.timetoken)
                     $log.debug 'TIMETOKEN UPDATED'
+
                     @subscription_request.envelopes.each do |envelope|
-                      fire_subscriptions_callback_for envelope
+
+                      dupe = manage_duplicates(envelope, request)
+
+                      fire_subscriptions_callback_for envelope unless dupe
                     end
+
+
                   else
                     $log.debug 'TIMETOKEN NOT UPDATED'
                   end
