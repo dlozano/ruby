@@ -78,10 +78,7 @@ module Pubnub
         end
       end
 
-
-
       @query            = options[:query]
-
       @http_sync        = options[:http_sync]
 
       @max_retries = options[:max_retries]
@@ -120,7 +117,6 @@ module Pubnub
 
         @ha_origins.each do |ha_origin|
           options[:message] = {"u" => u, "tx" => ha_origin, "payload" => m }
-
           options[:origin] = ha_origin
           start_request options
         end
@@ -241,238 +237,247 @@ module Pubnub
     def start_request(options)
       request = Pubnub::Request.new(options)
       unless options[:http_sync]
-        start_em_if_not_running
+        return async_start_request(options, request)
+      else
+        return sync_start_request(options, request)
+      end
+    end
 
-        if %w(subscribe presence).include? request.operation
-          options[:channel].split(',').each do |channel|
-            @subscriptions << Subscription.new(:channel => channel, :callback => options[:callback], :error_callback => options[:error_callback]) unless get_channels_for_subscription.include? channel
+    def sync_start_request(options, request)
+      begin
+        if @timetoken.to_i == 0 && request.operation == 'subscribe'
+          time(:http_sync => true) { |envelope| @timetoken = envelope.message.to_i }
+        end
+
+        begin
+          if request.query.to_s.empty?
+            if %w(subscribe presence).include? request.operation
+              response = @sync_connection_sub.send_request(request.origin + request.path, :timeout => 370)
+            else
+              response = @sync_connection.send_request(request.origin + request.path, :timeout => @non_subscribe_timeout)
+            end
+          else
+            if %w(subscribe presence).include? request.operation
+              response = @sync_connection_sub.send_request(request.origin + request.path, :query => request.query, :timeout => 370)
+            else
+              response = @sync_connection.send_request(request.origin + request.path, :query => request.query, :timeout => @non_subscribe_timeout)
+            end
           end
-
-          @subscription_request = request unless @subscription_request
-
-          if @subscription_request.channel != get_channels_for_subscription.join(',') && @subscription_running
-            @subscribe_connection.close
-            @timetoken = 0
-            @subscription_request.timetoken = 0
-            @wait_for_response = false
-          end
-
-          @subscription_request.channel = get_channels_for_subscription.join(',')
-
-          @subscription_running = EM.add_periodic_timer(PERIODIC_TIMER) do
-
-            unless @wait_for_response || get_channels_for_subscription.empty?
-              @wait_for_response = true
-              $log.debug 'SETTING CHANNELS'
-              @subscription_request.channel = get_channels_for_subscription.join(',')
-              $log.debug 'SENDING SUBSCRIBE REQUEST'
-              http = send_request(@subscription_request)
-
-              http.callback do
-                $log.debug 'GOT SUBSCRIBE RESPONSE'
-                @wait_for_response = false
-                if http.response_header.status.to_i == 200
-                  if is_valid_json?(http.response)
-                    $log.debug 'GOT VALID JSON'
-                    @subscription_request.handle_response(http)
-                    $log.debug 'HANDLED RESPONSE'
-                    if is_update?(@subscription_request.timetoken)
-                      $log.debug 'TIMETOKEN UPDATED'
-                      @subscription_request.envelopes.each do |envelope|
-                        fire_subscriptions_callback_for envelope
-                      end
-                    else
-                      $log.debug 'TIMETOKEN NOT UPDATED'
-                    end
-                  end
-                else
-                  if request.error_callback
-                    request.error_callback.call Pubnub::Response.new(
-                                                    :error_init => true,
-                                                    :message =>  [0, "Bad server response: #{http.response_header.status.to_i}"].to_json,
-                                                    :response =>  [0, "Bad server response: #{http.response_header.status.to_i}"].to_json
-                                                )
-                  else
-                    fire_subscriptions_callback_for Pubnub::Response.new(
-                                             :error_init => true,
-                                             :message =>  [0, "Bad server response: #{http.response_header.status.to_i}"].to_json,
-                                             :response =>  [0, "Bad server response: #{http.response_header.status.to_i}"].to_json
-                                         )
-                  end
-
-                end
-              end
-              http.errback do
-                $log.error 'GOT SUBSCRIBE ERROR'
-                @error_callback.call [0, http.error]
-              end
-            end
-          end unless @subscription_running
-        else
-          EM.next_tick do
-            $log.debug 'SENDING OTHER REQUEST'
-
-            http = send_request(request)
-
-            http.errback do
-              @error_callback.call [0, http.error]
-            end
-
-            http.callback do
-              $log.debug 'GOT OTHER RESPONSE'
-              #byebug
-              if http.response_header.status.to_i == 200
-                if is_valid_json?(http.response)
-                  request.handle_response(http)
-                  request.envelopes.each do |envelope|
-                    $log.debug 'CALLING PARAMETER CALLBACK'
-                    envelope.origin = request.origin
-                    $log.debug "Response Origin: #{envelope.origin}"
-                    request.callback.call envelope
-                  end
-                end
-              else
-                begin
-                  request.handle_response(http)
-                  request.envelopes.each do |envelope|
-                    if request.error_callback
-                      request.error_callback.call envelope
-                    else
-                      @error_callback.call envelope
-                    end
-                  end
-
-                rescue
-                  if request.error_callback
-                    request.error_callback.call Pubnub::Response.new(
-                      :error_init => true,
-                      :message =>  [0, "Bad server response: #{http.response_header.status.to_i}"].to_json,
-                      :response =>  [0, "Bad server response: #{http.response_header.status.to_i}"].to_json
-                    )
-                  else
-                    @error_callback.call Pubnub::Response.new(
-                      :error_init => true,
-                      :message =>  [0, "Bad server response: #{http.response_header.status.to_i}"].to_json,
-                      :response =>  [0, "Bad server response: #{http.response_header.status.to_i}"].to_json
-                    )
-                  end
-                end
-              end
-            end
+        rescue
+          msg = 'ERROR SENDING REQUEST'
+          @error_callback.call Pubnub::Response.new(
+                                   :error_init => true,
+                                   :message => [0, msg].to_s,
+                                   :response => [0, msg].to_s
+                               )
+          @retries = 0 unless @retries
+          @retries += 1
+          if @retries <= @max_retries
+            return start_request options
+          else
+            msg = "ERROR SENDING REQUEST AFTER #{@retries} RETRIES"
+            @retries = 0
+            return Pubnub::Response.new(
+                :error_init => true,
+                :message => [0, msg].to_s,
+                :response => [0, msg].to_s
+            )
           end
         end
-      else
-        begin
-          if @timetoken.to_i == 0 && request.operation == 'subscribe'
-            time(:http_sync => true){|envelope| @timetoken = envelope.message.to_i }
-          end
-          begin
-            if request.query.to_s.empty?
-              if %w(subscribe presence).include? request.operation
-                response = @sync_connection_sub.send_request(request.origin + request.path, :timeout => 370)
-              else
-                response = @sync_connection.send_request(request.origin + request.path, :timeout => @non_subscribe_timeout)
+
+        if @sync_connection_sub.first_run?
+          @connect_callback.call 'SYNC CONNECTION ESTABLISHED'
+        end
+        if response.response.code.to_i == 200
+          if is_valid_json?(response.body)
+            request.handle_response(response)
+            @timetoken = request.timetoken
+
+            if request.operation == 'leave'
+              Subscription.remove_from_subscription request.channel
+            end
+
+            if !request.callback.nil?
+              request.envelopes.each do |envelope|
+                envelope.origin = request.origin
+                $log.debug "Response Origin: #{envelope.origin}"
+                request.callback.call envelope
               end
             else
-              if %w(subscribe presence).include? request.operation
-                response = @sync_connection_sub.send_request(request.origin + request.path, :query => request.query, :timeout => 370)
+              if %w(publish leave here_now time).include? request.operation
+                return request.envelopes[0]
               else
-                response = @sync_connection.send_request(request.origin + request.path, :query => request.query, :timeout => @non_subscribe_timeout)
+                return request.envelopes
+              end
+            end
+          end
+        else
+          begin
+            request.handle_response(response)
+            if !request.callback.nil?
+              request.envelopes.each do |envelope|
+                request.callback.call envelope
+              end
+            else
+              if %w(publish leave here_now time).include? request.operation
+                return request.envelopes[0]
+              else
+                return request.envelopes
               end
             end
           rescue
-            msg = 'ERROR SENDING REQUEST'
-            @error_callback.call  Pubnub::Response.new(
-                                      :error_init => true,
-                                      :message =>  [0, msg].to_s,
-                                      :response =>  [0, msg].to_s
-                                  )
-            @retries = 0 unless @retries
-            @retries += 1
-            if @retries <= @max_retries
-              return start_request options
+            if request.error_callback
+              request.error_callback.call Pubnub::Response.new(
+                                              :error_init => true,
+                                              :message => [0, "Bad server response: #{response.response.code.to_i}"].to_json,
+                                              :response => [0, "Bad server response: #{response.response.code.to_i}"].to_json
+                                          )
             else
-              msg = "ERROR SENDING REQUEST AFTER #{@retries} RETRIES"
-              @retries = 0
-              return Pubnub::Response.new(
-                          :error_init => true,
-                          :message =>  [0, msg].to_s,
-                          :response =>  [0, msg].to_s
-                      )
+              @error_callback.call Pubnub::Response.new(
+                                       :error_init => true,
+                                       :message => [0, "Bad server response: #{response.response.code.to_i}"].to_json,
+                                       :response => [0, "Bad server response: #{response.response.code.to_i}"].to_json
+                                   )
             end
           end
 
-          if @sync_connection_sub.first_run?
-            @connect_callback.call 'SYNC CONNECTION ESTABLISHED'
+          if @sync_retries
+            @sync_retries += 1
+          else
+            @sync_retries = 1
           end
-          if response.response.code.to_i == 200
-            if is_valid_json?(response.body)
-              request.handle_response(response)
-              @timetoken = request.timetoken
 
-              if request.operation == 'leave'
-                Subscription.remove_from_subscription request.channel
+          if @sync_retries < @max_retries
+            start_request options
+          end
+        end
+      rescue Timeout::Error
+        if request.error_callback
+          request.error_callback.call [0, 'TIMEOUT']
+        else
+          @error_callback.call [0, 'TIMEOUT']
+        end
+      end
+    end
+
+    def async_start_request(options, request)
+      start_em_if_not_running
+
+      if %w(subscribe presence).include? request.operation
+        options[:channel].split(',').each do |channel|
+          @subscriptions << Subscription.new(:channel => channel, :callback => options[:callback], :error_callback => options[:error_callback]) unless get_channels_for_subscription.include? channel
+        end
+
+        @subscription_request = request unless @subscription_request
+
+        if @subscription_request.channel != get_channels_for_subscription.join(',') && @subscription_running
+          @subscribe_connection.close
+          @timetoken = 0
+          @subscription_request.timetoken = 0
+          @wait_for_response = false
+        end
+
+        @subscription_request.channel = get_channels_for_subscription.join(',')
+
+        @subscription_running = EM.add_periodic_timer(PERIODIC_TIMER) do
+
+          unless @wait_for_response || get_channels_for_subscription.empty?
+            @wait_for_response = true
+            $log.debug 'SETTING CHANNELS'
+            @subscription_request.channel = get_channels_for_subscription.join(',')
+            $log.debug 'SENDING SUBSCRIBE REQUEST'
+            http = send_request(@subscription_request)
+
+            http.callback do
+              $log.debug 'GOT SUBSCRIBE RESPONSE'
+              @wait_for_response = false
+              if http.response_header.status.to_i == 200
+                if is_valid_json?(http.response)
+                  $log.debug 'GOT VALID JSON'
+                  @subscription_request.handle_response(http)
+                  $log.debug 'HANDLED RESPONSE'
+                  if is_update?(@subscription_request.timetoken)
+                    $log.debug 'TIMETOKEN UPDATED'
+                    @subscription_request.envelopes.each do |envelope|
+                      fire_subscriptions_callback_for envelope
+                    end
+                  else
+                    $log.debug 'TIMETOKEN NOT UPDATED'
+                  end
+                end
+              else
+                if request.error_callback
+                  request.error_callback.call Pubnub::Response.new(
+                                                  :error_init => true,
+                                                  :message => [0, "Bad server response: #{http.response_header.status.to_i}"].to_json,
+                                                  :response => [0, "Bad server response: #{http.response_header.status.to_i}"].to_json
+                                              )
+                else
+                  fire_subscriptions_callback_for Pubnub::Response.new(
+                                                      :error_init => true,
+                                                      :message => [0, "Bad server response: #{http.response_header.status.to_i}"].to_json,
+                                                      :response => [0, "Bad server response: #{http.response_header.status.to_i}"].to_json
+                                                  )
+                end
+
               end
+            end
+            http.errback do
+              $log.error 'GOT SUBSCRIBE ERROR'
+              @error_callback.call [0, http.error]
+            end
+          end
+        end unless @subscription_running
+      else
+        EM.next_tick do
+          $log.debug 'SENDING OTHER REQUEST'
 
-              if !request.callback.nil?
+          http = send_request(request)
+
+          http.errback do
+            @error_callback.call [0, http.error]
+          end
+
+          http.callback do
+            $log.debug 'GOT OTHER RESPONSE'
+            #byebug
+            if http.response_header.status.to_i == 200
+              if is_valid_json?(http.response)
+                request.handle_response(http)
                 request.envelopes.each do |envelope|
+                  $log.debug 'CALLING PARAMETER CALLBACK'
                   envelope.origin = request.origin
                   $log.debug "Response Origin: #{envelope.origin}"
                   request.callback.call envelope
                 end
-              else
-                if %w(publish leave here_now time).include? request.operation
-                  return request.envelopes[0]
-                else
-                  return request.envelopes
-                end
               end
-            end
-          else
-            begin
-              request.handle_response(response)
-              if !request.callback.nil?
-                request.envelopes.each do |envelope|
-                  request.callback.call envelope
-                end
-              else
-                if %w(publish leave here_now time).include? request.operation
-                  return request.envelopes[0]
-                else
-                  return request.envelopes
-                end
-              end
-            rescue
-              if request.error_callback
-                request.error_callback.call Pubnub::Response.new(
-                                                :error_init => true,
-                                                :message =>  [0, "Bad server response: #{response.response.code.to_i}"].to_json,
-                                                :response =>  [0, "Bad server response: #{response.response.code.to_i}"].to_json
-                                            )
-              else
-                @error_callback.call Pubnub::Response.new(
-                                         :error_init => true,
-                                         :message =>  [0, "Bad server response: #{response.response.code.to_i}"].to_json,
-                                         :response =>  [0, "Bad server response: #{response.response.code.to_i}"].to_json
-                                     )
-              end
-            end
-
-            if @sync_retries
-              @sync_retries += 1
             else
-              @sync_retries = 1
-            end
+              begin
+                request.handle_response(http)
+                request.envelopes.each do |envelope|
+                  if request.error_callback
+                    request.error_callback.call envelope
+                  else
+                    @error_callback.call envelope
+                  end
+                end
 
-            if @sync_retries < @max_retries
-              start_request options
+              rescue
+                if request.error_callback
+                  request.error_callback.call Pubnub::Response.new(
+                                                  :error_init => true,
+                                                  :message => [0, "Bad server response: #{http.response_header.status.to_i}"].to_json,
+                                                  :response => [0, "Bad server response: #{http.response_header.status.to_i}"].to_json
+                                              )
+                else
+                  @error_callback.call Pubnub::Response.new(
+                                           :error_init => true,
+                                           :message => [0, "Bad server response: #{http.response_header.status.to_i}"].to_json,
+                                           :response => [0, "Bad server response: #{http.response_header.status.to_i}"].to_json
+                                       )
+                end
+              end
             end
-          end
-        rescue Timeout::Error
-          if request.error_callback
-            request.error_callback.call [0, 'TIMEOUT']
-          else
-            @error_callback.call [0, 'TIMEOUT']
           end
         end
       end
