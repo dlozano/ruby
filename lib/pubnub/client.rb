@@ -30,7 +30,7 @@ module Pubnub
 
     attr_accessor :uuid, :cipher_key, :host, :query, :response, :timetoken, :url, :operation, :callback, :publish_key, :subscribe_key, :secret_key, :channel, :jsonp, :message, :ssl, :port
     attr_accessor :close_connection, :history_limit, :history_count, :history_start, :history_end, :history_reverse, :session_uuid, :last_timetoken, :origin, :error
-    attr_accessor :ha_origins, :connection_pool
+    attr_accessor :ha_origins, :connection_pool, :duplicate_table
 
     DEFAULT_CONNECT_CALLBACK = lambda { |msg| $log.info "CONNECTED: #{msg}" }
     DEFAULT_ERROR_CALLBACK = lambda { |msg| $log.error "AN ERROR OCCURRED: #{msg}" }
@@ -40,34 +40,35 @@ module Pubnub
       $log = Logger.new('pubnub.log', 0, 100 * 1024 * 1024) unless $log
 
       @connection_pool = Hash.new
+      @duplicate_table = Hash.new
       @subscriptions = Array.new
 
       @subscription_request = nil
-      @retry            = true
-      @retry_count      = 0
-      @callback         = options[:callback]
-      @error_callback   = options[:error_callback]
-      @error_callback   = DEFAULT_ERROR_CALLBACK unless @error_callback
+      @retry = true
+      @retry_count = 0
+      @callback = options[:callback]
+      @error_callback = options[:error_callback]
+      @error_callback = DEFAULT_ERROR_CALLBACK unless @error_callback
       @connect_callback = options[:connect_callback]
       @connect_callback = DEFAULT_CONNECT_CALLBACK unless @connect_callback
-      @cipher_key       = options[:cipher_key]
-      @publish_key      = options[:publish_key] || DEFAULT_PUBLISH_KEY
-      @subscribe_key    = options[:subscribe_key] || DEFAULT_SUBSCRIBE_KEY
-      @channel          = options[:channel] || DEFAULT_CHANNEL
-      @message          = options[:message]
-      @ssl              = options[:ssl]
-      @secret_key       = options[:secret_key]
-      @timetoken        = options[:timetoken]
-      @session_uuid     = options[:uuid] || options[:session_uuid] || UUID.new.generate
+      @cipher_key = options[:cipher_key]
+      @publish_key = options[:publish_key] || DEFAULT_PUBLISH_KEY
+      @subscribe_key = options[:subscribe_key] || DEFAULT_SUBSCRIBE_KEY
+      @channel = options[:channel] || DEFAULT_CHANNEL
+      @message = options[:message]
+      @ssl = options[:ssl]
+      @secret_key = options[:secret_key]
+      @timetoken = options[:timetoken]
+      @session_uuid = options[:uuid] || options[:session_uuid] || UUID.new.generate
 
-          @history_count    = options[:count]
-      @history_start    = options[:start]
-      @history_end      = options[:end]
-      @history_reverse  = options[:reverse]
+      @history_count = options[:count]
+      @history_start = options[:start]
+      @history_end = options[:end]
+      @history_reverse = options[:reverse]
 
-      @port             = options[:port]
-      @url              = options[:url]
-      @origin           = options[:origin]
+      @port = options[:port]
+      @url = options[:url]
+      @origin = options[:origin]
 
       if @origin.present?
         if @origin.class == Array
@@ -78,8 +79,8 @@ module Pubnub
         end
       end
 
-      @query            = options[:query]
-      @http_sync        = options[:http_sync]
+      @query = options[:query]
+      @http_sync = options[:http_sync]
 
       @max_retries = options[:max_retries]
       @max_retries = MAX_RETRIES unless @max_retries
@@ -97,7 +98,7 @@ module Pubnub
       @reconnect_response_timeout = 5 unless @reconnect_response_timeout
 
       @sync_connection_sub = Pubnub::PubNubHTTParty.new
-      @sync_connection     = Pubnub::PubNubHTTParty.new
+      @sync_connection = Pubnub::PubNubHTTParty.new
 
       @pause_subscribe = false
     end
@@ -116,7 +117,7 @@ module Pubnub
         m = options[:message]
 
         @ha_origins.each do |ha_origin|
-          options[:message] = {"u" => u, "tx" => ha_origin, "payload" => m }
+          options[:message] = {"u" => u, "tx" => ha_origin, "payload" => m}
           options[:origin] = ha_origin
           start_request options
         end
@@ -127,6 +128,11 @@ module Pubnub
 
     def subscribe(options = {}, &block)
       options[:callback] = block if block_given?
+
+      if @ha_origins.present?
+        options[:channel] = options[:channel].split(",").map { |x| x + "-ha" }
+      end
+
       options = merge_options(options, 'subscribe')
       verify_operation('subscribe', options)
       @error_callback.call 'YOU ARE ALREADY SUBSCRIBED TO THAT CHANNEL' if get_channels_for_subscription.include? options[:channel]
@@ -199,18 +205,18 @@ module Pubnub
     end
 
     def merge_options(options = {}, operation = '')
-      options[:channel] = compile_channel_parameter(options[:channel],options[:channels]) if options[:channel] || options[:channels]
+      options[:channel] = compile_channel_parameter(options[:channel], options[:channels]) if options[:channel] || options[:channels]
       return {
-        :ssl           => @ssl,
-        :cipher_key    => @cipher_key,
-        :publish_key   => @publish_key,
-        :subscribe_key => @subscribe_key,
-        :secret_key    => @secret_key,
-        :origin        => @origin,
-        :operation     => operation,
-        :params        => { :uuid => @session_uuid },
-        :timetoken     => @timetoken,
-        :error_callback=> @error_callback
+          :ssl => @ssl,
+          :cipher_key => @cipher_key,
+          :publish_key => @publish_key,
+          :subscribe_key => @subscribe_key,
+          :secret_key => @secret_key,
+          :origin => @origin,
+          :operation => operation,
+          :params => {:uuid => @session_uuid},
+          :timetoken => @timetoken,
+          :error_callback => @error_callback
       }.merge(options)
     end
 
@@ -219,7 +225,8 @@ module Pubnub
         EM.run
       end unless EM.reactor_running?
 
-      until EM.reactor_running? do end
+      until EM.reactor_running? do
+      end
     end
 
     def get_channels_for_subscription
@@ -243,6 +250,8 @@ module Pubnub
       end
     end
 
+    DUPLICATE_EXPIRATION_SECONDS = 700
+
     def sync_start_request(options, request)
       begin
         if @timetoken.to_i == 0 && request.operation == 'subscribe'
@@ -250,6 +259,7 @@ module Pubnub
         end
 
         begin
+
           if request.query.to_s.empty?
             if %w(subscribe presence).include? request.operation
               response = @sync_connection_sub.send_request(request.origin + request.path, :timeout => 370)
@@ -258,11 +268,13 @@ module Pubnub
             end
           else
             if %w(subscribe presence).include? request.operation
+
               response = @sync_connection_sub.send_request(request.origin + request.path, :query => request.query, :timeout => 370)
             else
               response = @sync_connection.send_request(request.origin + request.path, :query => request.query, :timeout => @non_subscribe_timeout)
             end
           end
+
         rescue
           msg = 'ERROR SENDING REQUEST'
           @error_callback.call Pubnub::Response.new(
@@ -298,8 +310,34 @@ module Pubnub
             end
 
             if !request.callback.nil?
+
               request.envelopes.each do |envelope|
-                envelope.origin = request.origin
+
+                if @ha_origins.present? && %w(subscribe).include?(request.operation)
+                  envelope.u = envelope.message["u"]
+                  envelope.origin = envelope.message["tx"]
+
+                  if @duplicate_table.has_key?(envelope.u)
+                    puts "Throwing away: #{envelope.origin} : #{envelope.u}"
+                    @duplicate_table[envelope.u] = Time.now
+                    break
+                  end
+
+                  @duplicate_table[envelope.u] = Time.now
+
+                  @duplicate_table.each_pair do |k, v|
+                    if Time.now - v > DUPLICATE_EXPIRATION_SECONDS
+                      @duplicate_table.delete(k)
+                    end
+                  end
+
+                  envelope.message = envelope.message["payload"]
+
+                else
+
+                  envelope.origin = request.origin
+                end
+
                 $log.debug "Response Origin: #{envelope.origin}"
                 request.callback.call envelope
               end
@@ -492,9 +530,11 @@ module Pubnub
           @subscribe_connection = EM::HttpRequest.new(request.origin, :connect_timeout => 370, :inactivity_timeout => 370)
           connection = @subscribe_connection.get :path => '/time/0', :keepalive => true, :query => request.query
           #EM.next_tick do
-            connection.callback do
-              EM.defer do @connect_callback.call 'ASYNC SUBSCRIBE CONNECTION' end
+          connection.callback do
+            EM.defer do
+              @connect_callback.call 'ASYNC SUBSCRIBE CONNECTION'
             end
+          end
           #end
         end
 
@@ -502,7 +542,7 @@ module Pubnub
 
       else
 
-        if !@connection_pool.has_key?(request.origin) || (@connection_pool.has_key?(request.origin) &&  @connection_pool[request.origin].deferred)
+        if !@connection_pool.has_key?(request.origin) || (@connection_pool.has_key?(request.origin) && @connection_pool[request.origin].deferred)
           @connection_pool[request.origin] = EM::HttpRequest.new request.origin
         end
         @connection_pool[request.origin].get :path => request.path, :query => request.query, :keepalive => true
@@ -560,7 +600,7 @@ module Pubnub
       raise(ArgumentError, 'Can\'t handle both :channel and :channels parameters given.') if channel && channels
       channel = channels if channels
       channel = channel.to_s if channel.class == Symbol
-      channel = channel.map! {|c| c.to_s}.join(',') if channel.class == Array
+      channel = channel.map! { |c| c.to_s }.join(',') if channel.class == Array
       return channel
     end
 

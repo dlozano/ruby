@@ -1,7 +1,7 @@
 class Pubnub::Response
-  attr_reader :message, :channel, :timetoken, :status_code
+  attr_reader :channel, :timetoken, :status_code
   attr_reader :response, :path, :query
-  attr_accessor :origin
+  attr_accessor :origin, :u, :message
   alias :msg :message
 
   # Creates Pubnub::Response object based on options hash
