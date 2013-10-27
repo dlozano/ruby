@@ -538,29 +538,30 @@ module Pubnub
 
       $log.debug "Request Origin: #{request.origin}"
 
-      if %w(subscribe presence).include? request.operation
-        unless @subscribe_connection
-          @subscribe_connection = EM::HttpRequest.new(request.origin, :connect_timeout => 370, :inactivity_timeout => 370)
-          connection = @subscribe_connection.get :path => '/time/0', :keepalive => true, :query => request.query
-          #EM.next_tick do
+      pool_key = request.origin + "-" + request.operation
+
+
+      if !@connection_pool.has_key?(pool_key) || (@connection_pool.has_key?(pool_key) && @connection_pool[pool_key].deferred)
+
+        @connection_pool[pool_key] = EM::HttpRequest.new request.origin
+
+        if %w(subscribe presence).include? request.operation
+
+          @connection_pool[pool_key] = EM::HttpRequest.new(request.origin, :connect_timeout => 370, :inactivity_timeout => 370)
+
+          connection = @connection_pool[pool_key].get :path => '/time/0', :keepalive => true, :query => request.query
           connection.callback do
             EM.defer do
               @connect_callback.call 'ASYNC SUBSCRIBE CONNECTION'
             end
           end
-          #end
         end
 
-        @subscribe_connection.get :path => request.path, :query => request.query, :keepalive => true
-
-      else
-
-        if !@connection_pool.has_key?(request.origin) || (@connection_pool.has_key?(request.origin) && @connection_pool[request.origin].deferred)
-          @connection_pool[request.origin] = EM::HttpRequest.new request.origin
-        end
-        @connection_pool[request.origin].get :path => request.path, :query => request.query, :keepalive => true
       end
+
+      @connection_pool[pool_key].get :path => request.path, :query => request.query, :keepalive => true
     end
+
 
     def is_update?(timetoken)
       if @timetoken.to_i < timetoken.to_i
