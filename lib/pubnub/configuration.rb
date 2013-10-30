@@ -19,7 +19,8 @@ module Pubnub
     DEFAULT_SUBSCRIBE_KEY      = 'demo'
     DEFAULT_CHANNEL            = 'hello_world'
     PERIODIC_TIMER             = 0.25
-    MAX_RETRIES                = 60
+    MAX_RETRIES                = 0
+    MAX_RETRIES_INTERVAL       = 1
   end
 end
 

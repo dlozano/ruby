@@ -1,7 +1,10 @@
 class Pubnub::Response
   attr_reader :message, :channel, :timetoken, :status_code
   attr_reader :response, :path, :query
+  attr_accessor :is_error, :exception, :request
   alias :msg :message
+  alias :is_error? :is_error
+
 
   # Creates Pubnub::Response object based on options hash
   #
@@ -19,11 +22,16 @@ class Pubnub::Response
   def initialize(options = {})
     @path  = options[:path]
     @query = options[:query]
+    @is_error = false
 
     if options[:error_init]
+      @exception = options[:exception]
       @message = options[:message]
-      @response = options[:message]
+      @response = options[:response]
       @timetoken = 0
+      @is_error = true
+      @request = options[:request]
+
     else
       if options[:http].respond_to?(:body) && options[:http].respond_to?(:code) && options[:http].respond_to?(:message) && options[:http].respond_to?(:headers)
         httparty = true

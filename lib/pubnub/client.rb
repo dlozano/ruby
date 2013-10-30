@@ -350,25 +350,27 @@ module Pubnub
                 response = @sync_connection.send_request(request.origin + request.path, :query => request.query, :timeout => @non_subscribe_timeout)
               end
             end
-          rescue
-            msg = 'ERROR SENDING REQUEST'
-            @error_callback.call  Pubnub::Response.new(
-                                      :error_init => true,
-                                      :message =>  [0, msg].to_s,
-                                      :response =>  [0, msg].to_s
-                                  )
+
+          rescue Exception => e
+            error_response = Pubnub::Response.new(
+                :exception => e,
+                :error_init => true,
+                :response => response,
+                :request => request
+            )
+
+            @error_callback.call error_response
+
             @retries = 0 unless @retries
             @retries += 1
+
+            sleep MAX_RETRIES_INTERVAL
+
             if @retries <= @max_retries
               return start_request options
             else
-              msg = "ERROR SENDING REQUEST AFTER #{@retries} RETRIES"
               @retries = 0
-              return Pubnub::Response.new(
-                          :error_init => true,
-                          :message =>  [0, msg].to_s,
-                          :response =>  [0, msg].to_s
-                      )
+              return error_response
             end
           end
 
