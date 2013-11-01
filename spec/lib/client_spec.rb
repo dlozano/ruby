@@ -32,9 +32,31 @@ describe Pubnub::Client do
     end
 
     context 'when initialized' do
-      it 'should set a sessionUUID' do
-        Pubnub.new(:subscribe_key => :demo).session_uuid.should_not == nil
+
+      context 'when a sessionUUID is not provided' do
+
+        it 'should set a default sessionUUID' do
+          Pubnub.new(:subscribe_key => :demo).session_uuid.should_not == nil
+        end
+
+        it 'should be a string' do
+          Pubnub.new(:subscribe_key => :demo).session_uuid.should be_instance_of String
+        end
+
+        it 'should be a non-empty' do
+          Pubnub.new(:subscribe_key => :demo).session_uuid.should_not be_blank
+        end
+
       end
+
+      context 'when a sessionUUID is provided' do
+
+        it 'should match what was set' do
+          Pubnub.new(:subscribe_key => :demo, :uuid => "myuuid").session_uuid.should == "myuuid"
+        end
+      end
+
+
     end
 
     context 'when named' do
