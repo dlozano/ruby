@@ -59,7 +59,7 @@ module Pubnub
       @timetoken        = options[:timetoken]
       @session_uuid     = options[:uuid] || options[:session_uuid] || UUID.new.generate
 
-          @history_count    = options[:count]
+      @history_count    = options[:count]
       @history_start    = options[:start]
       @history_end      = options[:end]
       @history_reverse  = options[:reverse]
@@ -364,7 +364,7 @@ module Pubnub
             @retries = 0 unless @retries
             @retries += 1
 
-            sleep MAX_RETRIES_INTERVAL
+            #sleep MAX_RETRIES_INTERVAL
 
             if @retries <= @max_retries
               return start_request options
