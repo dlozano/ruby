@@ -12,22 +12,22 @@ describe Pubnub::Client do
   describe '.initialize' do
 
     before do
-      @publish_key   = 'demo_pub_key'
+      @publish_key = 'demo_pub_key'
       @subscribe_key = 'demo_sub_key'
-      @secret_key    = 'demo_md5_key'
-      @cipher_key    = 'demo_cipher_key'
-      @ssl           = false
-      @channel       = 'pn_test'
+      @secret_key = 'demo_md5_key'
+      @cipher_key = 'demo_cipher_key'
+      @ssl = false
+      @channel = 'pn_test'
     end
 
     shared_examples_for 'successful initialization' do
 
       it 'should initialize' do
-        @pn.publish_key.should   == @publish_key
+        @pn.publish_key.should == @publish_key
         @pn.subscribe_key.should == @subscribe_key
-        @pn.secret_key.should    == @secret_key
-        @pn.cipher_key.should    == @cipher_key
-        @pn.ssl.should           == @ssl_enabled
+        @pn.secret_key.should == @secret_key
+        @pn.cipher_key.should == @cipher_key
+        @pn.ssl.should == @ssl_enabled
       end
     end
 
@@ -56,6 +56,18 @@ describe Pubnub::Client do
         end
       end
 
+      context 'auth_key' do
+        it "should provide not provide a default" do
+          Pubnub.new(:subscribe_key => :demo).auth_key.should be_blank
+        end
+
+        it "should provide when supplied" do
+          Pubnub.new(:subscribe_key => :demo, :auth_key => "myauthkey").auth_key.should == "myauthkey"
+
+        end
+
+      end
+
 
     end
 
@@ -70,11 +82,11 @@ describe Pubnub::Client do
     context 'when passed with optional parameters in a hash' do
       context 'when the hash key is a symbol' do
         before do
-          @pn = Pubnub::Client.new(:publish_key   => @publish_key,
+          @pn = Pubnub::Client.new(:publish_key => @publish_key,
                                    :subscribe_key => @subscribe_key,
-                                   :secret_key    => @secret_key,
-                                   :cipher_key    => @cipher_key,
-                                   :ssl           => @ssl_enabled)
+                                   :secret_key => @secret_key,
+                                   :cipher_key => @cipher_key,
+                                   :ssl => @ssl_enabled)
         end
         it_behaves_like 'successful initialization'
       end
@@ -83,7 +95,7 @@ describe Pubnub::Client do
     describe '.verify_config' do
       context 'subscribe_key' do
         it 'should not throw an exception if present' do
-          lambda {  pn = Pubnub::Client.new(:subscribe_key => 'demo') }.should_not raise_error
+          lambda { pn = Pubnub::Client.new(:subscribe_key => 'demo') }.should_not raise_error
         end
 
         it 'should not throw an exception if present' do

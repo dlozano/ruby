@@ -30,7 +30,7 @@ module Pubnub
 
     attr_accessor :uuid, :cipher_key, :host, :query, :response, :timetoken, :url, :operation, :callback, :publish_key, :subscribe_key, :secret_key, :channel, :jsonp, :message, :ssl, :port
     attr_accessor :close_connection, :history_limit, :history_count, :history_start, :history_end, :history_reverse, :session_uuid, :last_timetoken, :origin, :error
-
+    attr_accessor :auth_key
 
     DEFAULT_CONNECT_CALLBACK = lambda { |msg| $log.info "CONNECTED: #{msg}" }
     DEFAULT_ERROR_CALLBACK = lambda { |msg| $log.error "AN ERROR OCCURRED: #{msg}" }
@@ -65,6 +65,7 @@ module Pubnub
       @history_reverse  = options[:reverse]
 
       @port             = options[:port]
+      @auth_key         = options[:auth_key]
       @url              = options[:url]
       @origin           = options[:origin]
       @origin           = DEFAULT_ORIGIN unless @origin
