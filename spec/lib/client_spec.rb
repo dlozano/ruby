@@ -56,18 +56,6 @@ describe Pubnub::Client do
         end
       end
 
-      context 'auth_key' do
-        it "should provide not provide a default" do
-          Pubnub.new(:subscribe_key => :demo).auth_key.should be_blank
-        end
-
-        it "should provide when supplied" do
-          Pubnub.new(:subscribe_key => :demo, :auth_key => "myauthkey").auth_key.should == "myauthkey"
-
-        end
-
-      end
-
 
     end
 
@@ -375,6 +363,65 @@ describe Pubnub::Client do
         end
 
       end
+    end
+
+    describe 'pam' do
+
+      before do
+
+        @my_callback = lambda { |message| Rails.logger.debug(message) }
+        @my_pub_key = 'demo'
+        @my_sub_key = 'demo'
+        @my_message = 'hello_world!'
+        @my_channel = 'hello_world'
+
+        @my_cipher_key = 'my_cipher_key'
+        @my_sec_key = 'my_sec_key'
+        @alt_sec_key = 'alt_sec_key'
+        @my_auth_key = 'my_auth_key'
+
+      end
+
+      context "auth_key" do
+
+        context 'when not init with auth' do
+          before do
+            @p = Pubnub.new(:subscribe_key => :demo)
+          end
+
+          it "should provide not provide a default" do
+            @p.auth_key.should be_blank
+          end
+
+          it "should be settable and gettable" do
+            @p.auth_key = @my_auth_key
+            @p.auth_key.should_not be_blank
+            @p.auth_key.should == @my_auth_key
+          end
+
+
+        end
+
+        context 'when init with auth' do
+          before do
+            @p = Pubnub.new(:subscribe_key => :demo, :auth_key => "myauthkey")
+          end
+
+          it "should provide when supplied" do
+            @p.auth_key.should == "myauthkey"
+          end
+
+          it "should be settable and gettable" do
+            @p.auth_key = @my_auth_key
+            @p.auth_key.should_not be_blank
+            @p.auth_key.should == @my_auth_key
+          end
+
+        end
+
+
+      end
+
     end
   end
 end
