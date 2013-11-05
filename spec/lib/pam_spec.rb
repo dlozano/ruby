@@ -63,8 +63,6 @@ describe "PAM" do
               response.request.params["auth"].should == @auth_key
             end
           end
-
-
         end
       end
 
