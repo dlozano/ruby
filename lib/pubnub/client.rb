@@ -185,7 +185,7 @@ module Pubnub
         :secret_key    => @secret_key,
         :origin        => @origin,
         :operation     => operation,
-        :params        => { :uuid => @session_uuid },
+        :params        => { :uuid => @session_uuid, :auth => @auth_key },
         :timetoken     => @timetoken,
         :error_callback=> @error_callback
       }.merge(options)

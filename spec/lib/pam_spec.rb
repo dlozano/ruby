@@ -2,7 +2,7 @@ require 'spec_helper'
 require 'rr'
 require 'vcr'
 
-describe "Pam" do
+describe "PAM" do
 
   VCR.configure do |c|
     c.cassette_library_dir = 'fixtures/vcr_cassetttes'
@@ -15,33 +15,82 @@ describe "Pam" do
     @secret_key = 'sec-c-ZjFjZmRhODMtM2E5Yi00N2ViLWJjYTktMjk2NmExOTQyMmYz'
     @auth_key = 'myauthkey'
     @channel = "mychannel"
+    @message = "hello PAM world!"
+    @err_callback = lambda { |x|
+      puts x }
+
   end
 
   context "when an auth_key is provided" do
+    context "when http_sync is true" do
+
+      before do
+        @p = Pubnub.new(:subscribe_key => @subscribe_key, :publish_key => @publish_key, :secret_key => @secret_key, :error_callback => @err_callback)
+
+      end
+
+      context "when a publish is made" do
+
+        it 'should provide the auth key in the url' do
+          VCR.use_cassette('pam1', :record => :once) do
+            @p.auth_key = @auth_key
+            response = @p.publish(:channel => @channel, :message => @message, :http_sync => true)
+            response.request.params["auth"].should == @auth_key
+          end
+        end
+      end
+    end
+
+    context "when http_sync is false" do
+
+      before do
+        @msg_callback = lambda { |x|
+          puts "async msg: #{x}" }
+
+        @p = Pubnub.new(:uuid => "myuuid", :subscribe_key => @subscribe_key, :publish_key => @publish_key, :secret_key => @secret_key, :error_callback => @err_callback)
+
+      end
+
+      context "when a publish is made" do
+        before do
+          mock(@p).verify_operation('publish', {:ssl => nil, :cipher_key => nil, :publish_key => "pub-c-e72b633d-bb2f-42ba-8e98-69a9d3f7bdaa",
+                                                :subscribe_key => "sub-c-8e798456-4520-11e3-9b46-02ee2ddab7fe", :secret_key => "sec-c-ZjFjZmRhODMtM2E5Yi00N2ViLWJjYTktMjk2NmExOTQyMmYz",
+                                                :origin => "pubsub.pubnub.com", :operation => "publish", :params => {:uuid => "myuuid", :auth => "myauthkey"}, :timetoken => nil,
+                                                :error_callback => @err_callback, :channel => @channel, :message => @message, :http_sync => false, :callback => @msg_callback})
+        end
+
+        it 'should provide the auth key in the url' do
+          VCR.use_cassette('pam3', :record => :once) do
+            @p.auth_key = @auth_key
+            @p.publish(:channel => @channel, :message => @message, :http_sync => false, :callback => @msg_callback)
+
+          end
+        end
+      end
+    end
+  end
+
+
+  context "when an auth_key is not provided" do
 
     before do
       @p = Pubnub.new(:subscribe_key => @subscribe_key, :publish_key => @publish_key, :secret_key => @secret_key)
     end
 
     context "when http_sync is true" do
-
       context "when a publish is made" do
 
-        it 'should provide the auth key in the url' do
-          VCR.use_cassette('pam1') do
-            @p.publish(:channel => @channel, :message => @message, :http_sync => true)
+        it 'should not provide an auth key in the url' do
+          VCR.use_cassette('pam2', :record => :once) do
+            response = @p.publish(:channel => @channel, :message => @message, :http_sync => true)
+            response.request.params["auth"].should be_nil
           end
-
         end
-
       end
-
     end
 
     context "when http_sync is false"
 
-
   end
-
 
 end
