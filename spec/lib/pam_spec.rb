@@ -64,6 +64,23 @@ describe "PAM" do
             end
           end
         end
+
+
+        context "on the initial and subsequent subscribe" do
+          it 'should provide the auth key in the url' do
+            VCR.use_cassette('pam6', :record => :none) do
+              @p.auth_key = @auth_key
+              response1 = @p.subscribe(:channel => @channel, :http_sync => true)
+              response2 = @p.subscribe(:channel => @channel, :http_sync => true)
+
+              response1.request.params["auth"].should == @auth_key
+              response2.request.params["auth"].should == @auth_key
+
+            end
+
+          end
+        end
+
       end
 
 
