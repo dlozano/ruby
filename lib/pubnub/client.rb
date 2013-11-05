@@ -365,7 +365,7 @@ module Pubnub
             @retries = 0 unless @retries
             @retries += 1
 
-            #sleep MAX_RETRIES_INTERVAL
+            sleep MAX_RETRIES_INTERVAL
 
             if @retries <= @max_retries
               return start_request options

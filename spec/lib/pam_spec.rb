@@ -22,6 +22,7 @@ describe "PAM" do
   end
 
   context "when an auth_key is provided" do
+
     context "when http_sync is true" do
 
       before do
@@ -32,13 +33,42 @@ describe "PAM" do
       context "when a publish is made" do
 
         it 'should provide the auth key in the url' do
-          VCR.use_cassette('pam1', :record => :once) do
+          VCR.use_cassette('pam1', :record => :none) do
             @p.auth_key = @auth_key
             response = @p.publish(:channel => @channel, :message => @message, :http_sync => true)
             response.request.params["auth"].should == @auth_key
           end
         end
       end
+
+      context "when history is made" do
+
+        it 'should provide the auth key in the url' do
+          VCR.use_cassette('pam4', :record => :none) do
+            @p.auth_key = @auth_key
+            response = @p.history(:channel => @channel, :count => 10, :http_sync => true)
+            response.request.params["auth"].should == @auth_key
+          end
+        end
+      end
+
+
+      context "when subscribe is made" do
+
+        context "on the initial subscribe" do
+          it 'should provide the auth key in the url' do
+            VCR.use_cassette('pam5', :record => :none) do
+              @p.auth_key = @auth_key
+              response = @p.subscribe(:channel => @channel, :http_sync => true)
+              response.request.params["auth"].should == @auth_key
+            end
+          end
+
+
+        end
+      end
+
+
     end
 
     context "when http_sync is false" do
@@ -60,7 +90,7 @@ describe "PAM" do
         end
 
         it 'should provide the auth key in the url' do
-          VCR.use_cassette('pam3', :record => :once) do
+          VCR.use_cassette('pam3', :record => :none) do
             @p.auth_key = @auth_key
             @p.publish(:channel => @channel, :message => @message, :http_sync => false, :callback => @msg_callback)
 
@@ -81,7 +111,7 @@ describe "PAM" do
       context "when a publish is made" do
 
         it 'should not provide an auth key in the url' do
-          VCR.use_cassette('pam2', :record => :once) do
+          VCR.use_cassette('pam2', :record => :none) do
             response = @p.publish(:channel => @channel, :message => @message, :http_sync => true)
             response.request.params["auth"].should be_nil
           end
@@ -89,7 +119,6 @@ describe "PAM" do
       end
     end
 
-    context "when http_sync is false"
 
   end
 
