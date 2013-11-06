@@ -248,7 +248,7 @@ describe "PAM" do
 
           mock(@p).verify_operation('history', {:ssl => nil, :cipher_key => nil, :publish_key => "pub-c-e72b633d-bb2f-42ba-8e98-69a9d3f7bdaa",
                                                 :subscribe_key => "sub-c-8e798456-4520-11e3-9b46-02ee2ddab7fe", :secret_key => "sec-c-ZjFjZmRhODMtM2E5Yi00N2ViLWJjYTktMjk2NmExOTQyMmYz",
-                                                :origin => "pubsub.pubnub.com", :operation => "history", :params => {:uuid => "myuuid", :auth => nil }, :timetoken => nil,
+                                                :origin => "pubsub.pubnub.com", :operation => "history", :params => {:uuid => "myuuid", :auth => nil}, :timetoken => nil,
                                                 :error_callback => @err_callback, :channel => @channel, :count => 10, :http_sync => false, :callback => @msg_callback})
 
 
@@ -265,7 +265,7 @@ describe "PAM" do
 
             mock(@p).verify_operation('subscribe', {:ssl => nil, :cipher_key => nil, :publish_key => "pub-c-e72b633d-bb2f-42ba-8e98-69a9d3f7bdaa",
                                                     :subscribe_key => "sub-c-8e798456-4520-11e3-9b46-02ee2ddab7fe", :secret_key => "sec-c-ZjFjZmRhODMtM2E5Yi00N2ViLWJjYTktMjk2NmExOTQyMmYz",
-                                                    :origin => "pubsub.pubnub.com", :operation => "subscribe", :params => {:uuid => "myuuid", :auth => nil }, :timetoken => nil,
+                                                    :origin => "pubsub.pubnub.com", :operation => "subscribe", :params => {:uuid => "myuuid", :auth => nil}, :timetoken => nil,
                                                     :error_callback => @err_callback, :channel => @channel, :http_sync => false, :callback => @msg_callback})
 
             VCR.use_cassette('pam8', :record => :none) do
@@ -280,7 +280,7 @@ describe "PAM" do
 
             mock(@p).verify_operation('subscribe', {:ssl => nil, :cipher_key => nil, :publish_key => "pub-c-e72b633d-bb2f-42ba-8e98-69a9d3f7bdaa",
                                                     :subscribe_key => "sub-c-8e798456-4520-11e3-9b46-02ee2ddab7fe", :secret_key => "sec-c-ZjFjZmRhODMtM2E5Yi00N2ViLWJjYTktMjk2NmExOTQyMmYz",
-                                                    :origin => "pubsub.pubnub.com", :operation => "subscribe", :params => {:uuid => "myuuid", :auth => nil }, :timetoken => nil,
+                                                    :origin => "pubsub.pubnub.com", :operation => "subscribe", :params => {:uuid => "myuuid", :auth => nil}, :timetoken => nil,
                                                     :error_callback => @err_callback, :channel => @channel, :http_sync => false, :callback => @msg_callback}).times(2)
 
             VCR.use_cassette('pam7', :record => :none) do
@@ -295,5 +295,39 @@ describe "PAM" do
     end
   end
 
+  describe "audit" do
+    context "required parameters" do
+
+      context "when the publish key is missing" do
+        it "should raise an error" do
+          @p = Pubnub.new(:uuid => "myuuid", :subscribe_key => @subscribe_key, :secret_key => @secret_key, :error_callback => @err_callback)
+          lambda { @p.audit(:http_sync => true) }.should raise_error(ArgumentError)
+        end
+      end
+
+      context "when the secret key is missing" do
+        it "should raise an error" do
+          @p = Pubnub.new(:uuid => "myuuid", :subscribe_key => @subscribe_key, :publish_key => @publish_key, :error_callback => @err_callback)
+          lambda { @p.audit(:publish_key => @publish_key, :http_sync => true) }.should raise_error(ArgumentError)
+        end
+      end
+
+
+      context "when only the subscribe key is missing" do
+        it "should raise an error" do
+          @p = Pubnub.new(:uuid => "myuuid", :publish_key => @publish_key, :secret_key => @secret_key, :error_callback => @err_callback)
+          lambda { @p.audit(:secret_key => @secret_key, :http_sync => true) }.should raise_error(ArgumentError)
+        end
+      end
+
+      context "when the required parameters are given" do
+        it "should require secret, pub, and sub keys" do
+          @p = Pubnub.new(:uuid => "myuuid", :publish_key => @publish_key, :subscribe_key => @subscribe_key, :secret_key => @secret_key, :error_callback => @err_callback)
+          lambda { @p.audit(:http_sync => true) }.should_not raise_error(ArgumentError)
+        end
+      end
+
+    end
+  end
 
 end

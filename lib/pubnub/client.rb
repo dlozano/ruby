@@ -50,8 +50,8 @@ module Pubnub
       @connect_callback = options[:connect_callback]
       @connect_callback = DEFAULT_CONNECT_CALLBACK unless @connect_callback
       @cipher_key       = options[:cipher_key]
-      @publish_key      = options[:publish_key] || DEFAULT_PUBLISH_KEY
-      @subscribe_key    = options[:subscribe_key] || DEFAULT_SUBSCRIBE_KEY
+      @publish_key      = options[:publish_key]
+      @subscribe_key    = options[:subscribe_key]
       @channel          = options[:channel] || DEFAULT_CHANNEL
       @message          = options[:message]
       @ssl              = options[:ssl]
@@ -94,12 +94,18 @@ module Pubnub
       @pause_subscribe = false
     end
 
+    def audit(options = {}, &block)
+      options[:callback] = block if block_given?
+      options = merge_options(options, 'audit')
+      verify_operation('audit', options)
+      start_request options
+    end
+
     def publish(options = {}, &block)
       options[:callback] = block if block_given?
       options = merge_options(options, 'publish')
       verify_operation('publish', options)
       start_request options
-
     end
 
     def subscribe(options = {}, &block)
@@ -178,16 +184,16 @@ module Pubnub
     def merge_options(options = {}, operation = '')
       options[:channel] = compile_channel_parameter(options[:channel],options[:channels]) if options[:channel] || options[:channels]
       return {
-        :ssl           => @ssl,
-        :cipher_key    => @cipher_key,
-        :publish_key   => @publish_key,
-        :subscribe_key => @subscribe_key,
-        :secret_key    => @secret_key,
-        :origin        => @origin,
-        :operation     => operation,
-        :params        => { :uuid => @session_uuid, :auth => @auth_key },
-        :timetoken     => @timetoken,
-        :error_callback=> @error_callback
+          :ssl => @ssl,
+          :cipher_key => @cipher_key,
+          :publish_key => @publish_key,
+          :subscribe_key => @subscribe_key,
+          :secret_key    => @secret_key,
+          :origin => @origin,
+          :operation => operation,
+          :params => {:uuid => @session_uuid, :auth => @auth_key},
+          :timetoken => @timetoken,
+          :error_callback => @error_callback
       }.merge(options)
     end
 
@@ -491,6 +497,8 @@ module Pubnub
 
     def verify_operation(operation, options)
       case operation
+        when 'audit'
+          raise(ArgumentError, 'audit() requires :publish_key, :subscribe_key, :secret_key, and, if async, callback parameter or block given.') unless (options[:callback] || options[:block_given] || options[:http_sync]) && (options[:secret_key] && options[:publish_key] && options[:subscribe_key])
         when 'publish'
           raise(ArgumentError, 'publish() requires :channel, :message parameters and, if async, callback parameter or block given.') unless (options[:channel] || options[:channels]) && (options[:callback] || options[:block_given] || options[:http_sync]) && options[:message]
         when 'subscribe'
