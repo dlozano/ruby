@@ -23,7 +23,7 @@ describe "PAM" do
     @msg_callback = lambda { |x|
       puts "msg callback: #{x}" }
 
-    @p = Pubnub.new(:uuid => "myuuid", :subscribe_key => @subscribe_key, :publish_key => @publish_key, :secret_key => @secret_key, :error_callback => @err_callback)
+    @p = Pubnub.new(:origin => "pam-next.devbuild.pubnub.com", :uuid => "myuuid", :subscribe_key => @subscribe_key, :publish_key => @publish_key, :secret_key => @secret_key, :error_callback => @err_callback)
 
   end
 
@@ -328,6 +328,35 @@ describe "PAM" do
       end
 
     end
+
+    context "via http" do
+      before do
+        @p = Pubnub.new(:uuid => "myuuid", :publish_key => @publish_key, :subscribe_key => @subscribe_key, :secret_key => @secret_key, :error_callback => @err_callback)
+      end
+
+      context "synchronously" do
+
+        context "via return" do
+
+          context "subkey request" do
+
+            it "should display current stats" do
+              VCR.use_cassette('pam10', :record => :new_episodes) do
+                @p.audit(:http_sync => true).should == Hash.new
+                end
+
+            end
+
+          end
+          context "subkey, channel request"
+          context "subkey, channel, authkey request"
+
+        end
+      end
+
+    end
+
+
   end
 
 end

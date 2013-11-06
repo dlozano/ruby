@@ -38,9 +38,9 @@ module Pubnub
 
       set_cipher_key(options, @cipher_key) if %w(publish subscribe history).include? @operation
       set_message(options, @cipher_key) if %w(publish).include? @operation
-      set_publish_key(options, @publish_key) if %w(publish).include? @operation
-      set_subscribe_key(options, @subscribe_key) if %w(publish presence here_now history subscribe leave).include? @operation
-      set_secret_key(options, @secret_key) if %w(publish subscribe).include? @operation
+      set_publish_key(options, @publish_key) if %w(publish audit).include? @operation
+      set_subscribe_key(options, @subscribe_key) if %w(publish audit presence here_now history subscribe leave).include? @operation
+      set_secret_key(options, @secret_key) if %w(publish subscribe audit).include? @operation
 
     end
 
@@ -67,6 +67,13 @@ module Pubnub
 
     def path
       encode_path(case @operation
+                    when 'audit'
+                      [
+                          'v1/auth',
+                          @operation,
+                          'sub-key',
+                          @subscribe_key,
+                      ]
                    when 'publish'
                      [
                          @operation,

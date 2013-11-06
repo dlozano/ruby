@@ -354,7 +354,12 @@ module Pubnub
               if %w(subscribe presence).include? request.operation
                 response = @sync_connection_sub.send_request(request.origin + request.path, :query => request.query, :timeout => 370)
               else
-                response = @sync_connection.send_request(request.origin + request.path, :query => request.query, :timeout => @non_subscribe_timeout)
+                if request.operation == 'audit'
+#                  pam_signature =
+                  response = @sync_connection.send_request(request.origin + request.path, :query => request.query, :timeout => @non_subscribe_timeout)
+                else
+                  response = @sync_connection.send_request(request.origin + request.path, :query => request.query, :timeout => @non_subscribe_timeout)
+                end
               end
             end
 
