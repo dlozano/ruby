@@ -23,14 +23,15 @@ class Pubnub::Response
     @path  = options[:path]
     @query = options[:query]
     @is_error = false
+    @request = options[:request]
+    @response = options[:response]
+
 
     if options[:error_init]
       @exception = options[:exception]
       @message = options[:message]
-      @response = options[:response]
       @timetoken = 0
       @is_error = true
-      @request = options[:request]
 
     else
       if options[:http].respond_to?(:body) && options[:http].respond_to?(:code) && options[:http].respond_to?(:message) && options[:http].respond_to?(:headers)
