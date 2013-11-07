@@ -16,6 +16,7 @@ describe "PAM" do
     @auth_key = 'myauthkey'
     @channel = "mychannel"
     @message = "hello PAM world!"
+    @origin = "pam-next.devbuild.pubnub.com"
 
     @err_callback = lambda { |x|
       puts "err callback: #{x}" }
@@ -23,7 +24,8 @@ describe "PAM" do
     @msg_callback = lambda { |x|
       puts "msg callback: #{x}" }
 
-    @p = Pubnub.new(:origin => "pam-next.devbuild.pubnub.com", :uuid => "myuuid", :subscribe_key => @subscribe_key, :publish_key => @publish_key, :secret_key => @secret_key, :error_callback => @err_callback)
+
+    @p = Pubnub.new(:origin => @origin, :uuid => "myuuid", :subscribe_key => @subscribe_key, :publish_key => @publish_key, :secret_key => @secret_key, :error_callback => @err_callback)
 
   end
 
@@ -95,7 +97,7 @@ describe "PAM" do
 
           mock(@p).verify_operation('publish', {:ssl => nil, :cipher_key => nil, :publish_key => "pub-c-e72b633d-bb2f-42ba-8e98-69a9d3f7bdaa",
                                                 :subscribe_key => "sub-c-8e798456-4520-11e3-9b46-02ee2ddab7fe", :secret_key => "sec-c-ZjFjZmRhODMtM2E5Yi00N2ViLWJjYTktMjk2NmExOTQyMmYz",
-                                                :origin => "pubsub.pubnub.com", :operation => "publish", :params => {:uuid => "myuuid", :auth => "myauthkey"}, :timetoken => nil,
+                                                :origin => @origin, :operation => "publish", :params => {:uuid => "myuuid", :auth => "myauthkey"}, :timetoken => nil,
                                                 :error_callback => @err_callback, :channel => @channel, :message => @message, :http_sync => false, :callback => @msg_callback})
 
 
@@ -114,7 +116,7 @@ describe "PAM" do
 
           mock(@p).verify_operation('history', {:ssl => nil, :cipher_key => nil, :publish_key => "pub-c-e72b633d-bb2f-42ba-8e98-69a9d3f7bdaa",
                                                 :subscribe_key => "sub-c-8e798456-4520-11e3-9b46-02ee2ddab7fe", :secret_key => "sec-c-ZjFjZmRhODMtM2E5Yi00N2ViLWJjYTktMjk2NmExOTQyMmYz",
-                                                :origin => "pubsub.pubnub.com", :operation => "history", :params => {:uuid => "myuuid", :auth => "myauthkey"}, :timetoken => nil,
+                                                :origin => @origin, :operation => "history", :params => {:uuid => "myuuid", :auth => "myauthkey"}, :timetoken => nil,
                                                 :error_callback => @err_callback, :channel => @channel, :count => 10, :http_sync => false, :callback => @msg_callback})
 
 
@@ -131,7 +133,7 @@ describe "PAM" do
 
             mock(@p).verify_operation('subscribe', {:ssl => nil, :cipher_key => nil, :publish_key => "pub-c-e72b633d-bb2f-42ba-8e98-69a9d3f7bdaa",
                                                     :subscribe_key => "sub-c-8e798456-4520-11e3-9b46-02ee2ddab7fe", :secret_key => "sec-c-ZjFjZmRhODMtM2E5Yi00N2ViLWJjYTktMjk2NmExOTQyMmYz",
-                                                    :origin => "pubsub.pubnub.com", :operation => "subscribe", :params => {:uuid => "myuuid", :auth => "myauthkey"}, :timetoken => nil,
+                                                    :origin => @origin, :operation => "subscribe", :params => {:uuid => "myuuid", :auth => "myauthkey"}, :timetoken => nil,
                                                     :error_callback => @err_callback, :channel => @channel, :http_sync => false, :callback => @msg_callback})
 
             VCR.use_cassette('pam8', :record => :none) do
@@ -146,7 +148,7 @@ describe "PAM" do
 
             mock(@p).verify_operation('subscribe', {:ssl => nil, :cipher_key => nil, :publish_key => "pub-c-e72b633d-bb2f-42ba-8e98-69a9d3f7bdaa",
                                                     :subscribe_key => "sub-c-8e798456-4520-11e3-9b46-02ee2ddab7fe", :secret_key => "sec-c-ZjFjZmRhODMtM2E5Yi00N2ViLWJjYTktMjk2NmExOTQyMmYz",
-                                                    :origin => "pubsub.pubnub.com", :operation => "subscribe", :params => {:uuid => "myuuid", :auth => "myauthkey"}, :timetoken => nil,
+                                                    :origin => @origin, :operation => "subscribe", :params => {:uuid => "myuuid", :auth => "myauthkey"}, :timetoken => nil,
                                                     :error_callback => @err_callback, :channel => @channel, :http_sync => false, :callback => @msg_callback}).times(2)
 
             VCR.use_cassette('pam7', :record => :none) do
@@ -230,7 +232,7 @@ describe "PAM" do
 
           mock(@p).verify_operation('publish', {:ssl => nil, :cipher_key => nil, :publish_key => "pub-c-e72b633d-bb2f-42ba-8e98-69a9d3f7bdaa",
                                                 :subscribe_key => "sub-c-8e798456-4520-11e3-9b46-02ee2ddab7fe", :secret_key => "sec-c-ZjFjZmRhODMtM2E5Yi00N2ViLWJjYTktMjk2NmExOTQyMmYz",
-                                                :origin => "pubsub.pubnub.com", :operation => "publish", :params => {:uuid => "myuuid", :auth => nil}, :timetoken => nil,
+                                                :origin => @origin, :operation => "publish", :params => {:uuid => "myuuid", :auth => nil}, :timetoken => nil,
                                                 :error_callback => @err_callback, :channel => @channel, :message => @message, :http_sync => false, :callback => @msg_callback})
 
 
@@ -248,7 +250,7 @@ describe "PAM" do
 
           mock(@p).verify_operation('history', {:ssl => nil, :cipher_key => nil, :publish_key => "pub-c-e72b633d-bb2f-42ba-8e98-69a9d3f7bdaa",
                                                 :subscribe_key => "sub-c-8e798456-4520-11e3-9b46-02ee2ddab7fe", :secret_key => "sec-c-ZjFjZmRhODMtM2E5Yi00N2ViLWJjYTktMjk2NmExOTQyMmYz",
-                                                :origin => "pubsub.pubnub.com", :operation => "history", :params => {:uuid => "myuuid", :auth => nil}, :timetoken => nil,
+                                                :origin => @origin, :operation => "history", :params => {:uuid => "myuuid", :auth => nil}, :timetoken => nil,
                                                 :error_callback => @err_callback, :channel => @channel, :count => 10, :http_sync => false, :callback => @msg_callback})
 
 
@@ -265,7 +267,7 @@ describe "PAM" do
 
             mock(@p).verify_operation('subscribe', {:ssl => nil, :cipher_key => nil, :publish_key => "pub-c-e72b633d-bb2f-42ba-8e98-69a9d3f7bdaa",
                                                     :subscribe_key => "sub-c-8e798456-4520-11e3-9b46-02ee2ddab7fe", :secret_key => "sec-c-ZjFjZmRhODMtM2E5Yi00N2ViLWJjYTktMjk2NmExOTQyMmYz",
-                                                    :origin => "pubsub.pubnub.com", :operation => "subscribe", :params => {:uuid => "myuuid", :auth => nil}, :timetoken => nil,
+                                                    :origin => @origin, :operation => "subscribe", :params => {:uuid => "myuuid", :auth => nil}, :timetoken => nil,
                                                     :error_callback => @err_callback, :channel => @channel, :http_sync => false, :callback => @msg_callback})
 
             VCR.use_cassette('pam8', :record => :none) do
@@ -280,7 +282,7 @@ describe "PAM" do
 
             mock(@p).verify_operation('subscribe', {:ssl => nil, :cipher_key => nil, :publish_key => "pub-c-e72b633d-bb2f-42ba-8e98-69a9d3f7bdaa",
                                                     :subscribe_key => "sub-c-8e798456-4520-11e3-9b46-02ee2ddab7fe", :secret_key => "sec-c-ZjFjZmRhODMtM2E5Yi00N2ViLWJjYTktMjk2NmExOTQyMmYz",
-                                                    :origin => "pubsub.pubnub.com", :operation => "subscribe", :params => {:uuid => "myuuid", :auth => nil}, :timetoken => nil,
+                                                    :origin => @origin, :operation => "subscribe", :params => {:uuid => "myuuid", :auth => nil}, :timetoken => nil,
                                                     :error_callback => @err_callback, :channel => @channel, :http_sync => false, :callback => @msg_callback}).times(2)
 
             VCR.use_cassette('pam7', :record => :none) do
@@ -329,34 +331,48 @@ describe "PAM" do
 
     end
 
-    context "via http" do
+    describe "integration" do
+
       before do
-        @p = Pubnub.new(:uuid => "myuuid", :publish_key => @publish_key, :subscribe_key => @subscribe_key, :secret_key => @secret_key, :error_callback => @err_callback)
-      end
-
-      context "synchronously" do
-
-        context "via return" do
-
-          context "subkey request" do
-
-            it "should display current stats" do
-              VCR.use_cassette('pam10', :record => :new_episodes) do
-                @p.audit(:http_sync => true).should == Hash.new
-                end
-
-            end
-
-          end
-          context "subkey, channel request"
-          context "subkey, channel, authkey request"
-
+        any_instance_of(Pubnub::Request) do |request |
+          stub(request).current_time { 123456 }
         end
       end
 
+      context "via http" do
+        before do
+          @p = Pubnub.new(:origin => @origin, :uuid => "myuuid", :publish_key => @publish_key, :subscribe_key => @subscribe_key, :secret_key => @secret_key, :error_callback => @err_callback)
+        end
+
+        context "synchronously" do
+
+          context "via return" do
+
+            context "subkey request" do
+
+              it "should display current stats" do
+                VCR.use_cassette('pam10', :record => :none) do
+                  response = @p.audit(:http_sync => true)
+
+                  response.is_error.should be_false
+                  response.response["payload"]["channels"].should be_empty
+                  response.response["payload"]["level"].should == 'subkey'
+
+                end
+
+              end
+
+            end
+            context "subkey, channel request"
+            context "subkey, channel, authkey request"
+
+          end
+        end
+
+      end
     end
 
-
   end
+
 
 end

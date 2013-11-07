@@ -355,8 +355,7 @@ module Pubnub
                 response = @sync_connection_sub.send_request(request.origin + request.path, :query => request.query, :timeout => 370)
               else
                 if request.operation == 'audit'
-#                  pam_signature =
-                  response = @sync_connection.send_request(request.origin + request.path, :query => request.query, :timeout => @non_subscribe_timeout)
+                  response = @sync_connection.send_request(request.origin + request.path, :query => request.query(:signature => true), :timeout => @non_subscribe_timeout)
                 else
                   response = @sync_connection.send_request(request.origin + request.path, :query => request.query, :timeout => @non_subscribe_timeout)
                 end
@@ -403,7 +402,7 @@ module Pubnub
                   request.callback.call envelope
                 end
               else
-                if %w(publish leave here_now time).include? request.operation
+                if %w(publish leave here_now time audit grant).include? request.operation
                   return request.envelopes[0]
                 else
                   return request.envelopes

@@ -14,6 +14,7 @@ module Pubnub
     include Pubnub::Error
 
     attr_accessor :error_callback, :envelopes, :port, :timetoken, :operation, :response, :ssl, :channel, :callback, :cipher_key, :subscribe_key, :secret_key, :operation, :message, :publish_key
+    attr_accessor :signature, :timestamp
 
     def initialize(options = {})
       @options = options
@@ -38,10 +39,25 @@ module Pubnub
 
       set_cipher_key(options, @cipher_key) if %w(publish subscribe history).include? @operation
       set_message(options, @cipher_key) if %w(publish).include? @operation
-      set_publish_key(options, @publish_key) if %w(publish audit).include? @operation
-      set_subscribe_key(options, @subscribe_key) if %w(publish audit presence here_now history subscribe leave).include? @operation
-      set_secret_key(options, @secret_key) if %w(publish subscribe audit).include? @operation
+      set_publish_key(options, @publish_key) if %w(publish audit grant).include? @operation
+      set_subscribe_key(options, @subscribe_key) if %w(publish audit grant presence here_now history subscribe leave).include? @operation
+      set_secret_key(options, @secret_key) if %w(publish subscribe audit grant).include? @operation
 
+      if operation == 'audit'
+        generate_signature!
+      end
+
+    end
+
+    def generate_signature!
+      @timestamp = current_time
+      message = "#{@subscribe_key}\n#{@publish_key}\n#{@operation}\n#{query}"
+      @signature = URI.escape(Base64.strict_encode64(OpenSSL::HMAC.digest(OpenSSL::Digest::Digest.new('sha256'), @secret_key, message)).strip())
+      @signature
+    end
+
+    def current_time
+      Time.now.to_i
     end
 
     def ssl=(ssl)
@@ -158,8 +174,12 @@ module Pubnub
       flat
     end
 
-    def query
-      params.map do |param, value|
+    def query(options = {})
+
+      params_hash = @timestamp ? params.merge({"timestamp" => @timestamp }) : params
+      params_hash.merge!({"signature" => @signature}) if (options[:signature])
+
+      params_hash.map do |param, value|
         [param, value].join('=')
       end.sort.join('&')
     end
@@ -250,7 +270,7 @@ module Pubnub
         digest          = OpenSSL::Digest.new('sha256')
         key             = [my_secret_key]
         hmac            = OpenSSL::HMAC.hexdigest(digest, key.pack('H*'), signature)
-        @secret_key = hmac
+        @secret_key = my_secret_key
       else
         @secret_key = '0'
       end

@@ -5,9 +5,32 @@ require 'vcr'
 describe Pubnub::Request do
   before do
     @pubnub_request = Pubnub::Request.new(
-      :subscribe_key => 'subscribe_key',
-      :origin        => 'pubsub.pubnub.com'
+        :subscribe_key => 'subscribe_key',
+        :origin => 'pubsub.pubnub.com',
     )
+  end
+
+
+  describe ".generate_signature!" do
+
+    context 'when it is an audit' do
+
+
+      it "should generate a signature based on params" do
+        @request = Pubnub::Request.new(
+            :subscribe_key => 'mysubkey',
+            :publish_key => 'mypubkey',
+            :secret_key => 'mysecretkey',
+            :origin => 'pubsub.pubnub.com',
+            :params => {:uuid => "myuuid", :auth => "myauth"},
+            :operation => 'audit'
+        )
+
+        mock(@request).current_time { 123456 }
+        @request.generate_signature!.should == "1RHhHBAF5bq1pEp1MDNR6JbRirJY6Nm9MqrXg2X/RMU="
+
+      end
+    end
   end
 
   describe 'origin' do
@@ -32,12 +55,12 @@ describe Pubnub::Request do
         context 'and it\'s not encrypted' do
           it 'is valid' do
             @pubnub_request = Pubnub::Request.new(
-                :operation     => 'publish',
-                :channel       => 'channel',
+                :operation => 'publish',
+                :channel => 'channel',
                 :subscribe_key => 'subscribe_key',
-                :origin        => 'pubsub.pubnub.com',
-                :publish_key   => 'publish_key',
-                :message       => 'test_message'
+                :origin => 'pubsub.pubnub.com',
+                :publish_key => 'publish_key',
+                :message => 'test_message'
             )
 
             @pubnub_request.path.should eq '/publish/publish_key/subscribe_key/0/channel/0/%22test_message%22'
@@ -46,13 +69,13 @@ describe Pubnub::Request do
         context 'and it\'s encrypted' do
           it 'is valid' do
             @pubnub_request = Pubnub::Request.new(
-                :operation     => 'publish',
-                :channel       => 'channel',
+                :operation => 'publish',
+                :channel => 'channel',
                 :subscribe_key => 'subscribe_key',
-                :origin        => 'pubsub.pubnub.com',
-                :publish_key   => 'publish_key',
-                :message       => 'test_message',
-                :cipher_key    => 'so_secret_key'
+                :origin => 'pubsub.pubnub.com',
+                :publish_key => 'publish_key',
+                :message => 'test_message',
+                :cipher_key => 'so_secret_key'
             )
 
             @pubnub_request.path.should eq '/publish/publish_key/subscribe_key/0/channel/0/%22OfUPhgfENucj3lsbSef1qg==%22'
@@ -63,11 +86,11 @@ describe Pubnub::Request do
       context 'is subscribe' do
         it 'is valid' do
           @pubnub_request = Pubnub::Request.new(
-              :operation     => 'subscribe',
-              :channel       => 'channel',
+              :operation => 'subscribe',
+              :channel => 'channel',
               :subscribe_key => 'subscribe_key',
-              :origin        => 'pubsub.pubnub.com',
-              :publish_key   => 'publish_key'
+              :origin => 'pubsub.pubnub.com',
+              :publish_key => 'publish_key'
           )
 
           @pubnub_request.path.should eq '/subscribe/subscribe_key/channel/0/0'
@@ -77,11 +100,11 @@ describe Pubnub::Request do
       context 'is history' do
         it 'is valid' do
           @pubnub_request = Pubnub::Request.new(
-              :operation     => 'history',
-              :channel       => 'channel',
+              :operation => 'history',
+              :channel => 'channel',
               :subscribe_key => 'subscribe_key',
-              :origin        => 'pubsub.pubnub.com',
-              :publish_key   => 'publish_key'
+              :origin => 'pubsub.pubnub.com',
+              :publish_key => 'publish_key'
           )
 
           @pubnub_request.path.should eq '/v2/history/sub-key/subscribe_key/channel/channel'
@@ -92,11 +115,11 @@ describe Pubnub::Request do
       context 'is presence' do
         it 'is valid' do
           @pubnub_request = Pubnub::Request.new(
-            :operation     => 'presence',
-            :channel       => 'channel',
-            :subscribe_key => 'subscribe_key',
-            :origin        => 'pubsub.pubnub.com',
-            :publish_key   => 'publish_key'
+              :operation => 'presence',
+              :channel => 'channel',
+              :subscribe_key => 'subscribe_key',
+              :origin => 'pubsub.pubnub.com',
+              :publish_key => 'publish_key'
           )
 
           @pubnub_request.path.should eq '/subscribe/subscribe_key/channel-pnpres/0/0'
@@ -106,11 +129,11 @@ describe Pubnub::Request do
       context 'is here_now' do
         it 'is valid' do
           @pubnub_request = Pubnub::Request.new(
-              :operation     => 'here_now',
-              :channel       => 'channel',
+              :operation => 'here_now',
+              :channel => 'channel',
               :subscribe_key => 'subscribe_key',
-              :origin        => 'pubsub.pubnub.com',
-              :publish_key   => 'publish_key'
+              :origin => 'pubsub.pubnub.com',
+              :publish_key => 'publish_key'
           )
 
           @pubnub_request.path.should eq '/v2/presence/sub-key/subscribe_key/channel/channel'
@@ -120,11 +143,11 @@ describe Pubnub::Request do
       context 'is time' do
         it 'is valid' do
           @pubnub_request = Pubnub::Request.new(
-              :operation     => 'time',
-              :channel       => 'channel',
+              :operation => 'time',
+              :channel => 'channel',
               :subscribe_key => 'subscribe_key',
-              :origin        => 'pubsub.pubnub.com',
-              :publish_key   => 'publish_key'
+              :origin => 'pubsub.pubnub.com',
+              :publish_key => 'publish_key'
           )
 
           @pubnub_request.path.should eq '/time/0'
@@ -135,14 +158,14 @@ describe Pubnub::Request do
 
   describe 'created query' do
     it 'fits to passed parameters' do
-      params = { :uuid => '123-123-123', :some_val => 'value' }
+      params = {:uuid => '123-123-123', :some_val => 'value'}
       @pubnub_request = Pubnub::Request.new(
-          :operation     => 'time',
-          :channel       => 'channel',
+          :operation => 'time',
+          :channel => 'channel',
           :subscribe_key => 'subscribe_key',
-          :origin        => 'pubsub.pubnub.com',
-          :publish_key   => 'publish_key',
-          :params        => params
+          :origin => 'pubsub.pubnub.com',
+          :publish_key => 'publish_key',
+          :params => params
       )
 
       @pubnub_request.query.should eq 'some_val=value&uuid=123-123-123'
