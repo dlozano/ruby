@@ -334,7 +334,7 @@ describe "PAM" do
     describe "integration" do
 
       before do
-        any_instance_of(Pubnub::Request) do |request |
+        any_instance_of(Pubnub::Request) do |request|
           stub(request).current_time { 123456 }
         end
       end
@@ -345,26 +345,39 @@ describe "PAM" do
         end
 
         context "synchronously" do
-
           context "via return" do
+            context "audit" do
 
-            context "subkey request" do
+              context "subkey level" do
+                it "should display current stats" do
+                  VCR.use_cassette('pam10', :record => :none) do
+                    response = @p.audit(:http_sync => true)
 
-              it "should display current stats" do
-                VCR.use_cassette('pam10', :record => :none) do
-                  response = @p.audit(:http_sync => true)
-
-                  response.is_error.should be_false
-                  response.response["payload"]["channels"].should be_empty
-                  response.response["payload"]["level"].should == 'subkey'
-
+                    response.is_error.should be_false
+                    response.response["payload"]["channels"].should be_empty
+                    response.response["payload"]["level"].should == 'subkey'
+                  end
                 end
-
               end
 
+              context "channel level" do
+                it "should display current stats" do
+                  VCR.use_cassette('pam11', :record => :none) do
+                    response = @p.audit(:http_sync => true, :channel => @channel)
+
+                    response.is_error.should be_false
+                    response.response["payload"]["channels"].should be_empty
+                    response.response["payload"]["level"].should == 'channel'
+
+                  end
+
+                end
+              end
+
+              context "channel and user level"
+
+
             end
-            context "subkey, channel request"
-            context "subkey, channel, authkey request"
 
           end
         end

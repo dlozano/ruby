@@ -52,7 +52,7 @@ module Pubnub
       @cipher_key       = options[:cipher_key]
       @publish_key      = options[:publish_key]
       @subscribe_key    = options[:subscribe_key]
-      @channel          = options[:channel] || DEFAULT_CHANNEL
+      @channel          = options[:channel]
       @message          = options[:message]
       @ssl              = options[:ssl]
       @secret_key       = options[:secret_key]
@@ -417,7 +417,7 @@ module Pubnub
                   request.callback.call envelope
                 end
               else
-                if %w(publish leave here_now time).include? request.operation
+                if %w(publish leave here_now time audit grant).include? request.operation
                   return request.envelopes[0]
                 else
                   return request.envelopes

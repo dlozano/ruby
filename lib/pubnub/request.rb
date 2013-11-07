@@ -175,8 +175,17 @@ module Pubnub
     end
 
     def query(options = {})
+      params_hash = params.clone
 
-      params_hash = @timestamp ? params.merge({"timestamp" => @timestamp }) : params
+      if @timestamp.present?
+        params_hash.merge!({"timestamp" => @timestamp })
+
+        if @channel.present?
+          params_hash.merge!({"channel" => @channel })
+        end
+      end
+
+
       params_hash.merge!({"signature" => @signature}) if (options[:signature])
 
       params_hash.map do |param, value|
