@@ -132,13 +132,12 @@ module Pubnub
     end
 
     def encode_path(request)
-      $log.debug 'ENCODING PATH'
       path = URI.escape('/' + request.map{|i| i.to_s}.reject(&:empty?).join('/')).gsub(/\?/,'%3F')
       if @operation == 'leave'
-        $log.debug "#{path}/leave"
+        #$log.debug "#{path}/leave"
         "#{path}/leave"
       else
-        $log.debug path
+        #$log.debug path
         path
       end
     end

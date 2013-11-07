@@ -10,6 +10,8 @@ module Pubnub
     include HTTParty
     default_timeout 310
 
+    persistent_connection_adapter(:name => 'pn1',:pool_size => 5,:idle_timeout => 310,:keep_alive => 310)
+
     def first_run?
       @first_run ? true : false
     end
