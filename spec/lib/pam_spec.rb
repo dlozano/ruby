@@ -324,12 +324,22 @@ describe "PAM" do
         end
       end
 
+      context "when only the auth key is given with no channel" do
+        it "should raise an error" do
+          @p = Pubnub.new(:uuid => "myuuid", :publish_key => @publish_key, :subscribe_key => @subscribe_key, :secret_key => @secret_key, :error_callback => @err_callback)
+          @p.auth_key = "foo"
+          lambda { @p.audit(:secret_key => @secret_key, :http_sync => true) }.should raise_error(ArgumentError)
+        end
+      end
+
       context "when the required parameters are given" do
         it "should require secret, pub, and sub keys" do
           @p = Pubnub.new(:uuid => "myuuid", :publish_key => @publish_key, :subscribe_key => @subscribe_key, :secret_key => @secret_key, :error_callback => @err_callback)
           lambda { @p.audit(:http_sync => true) }.should_not raise_error(ArgumentError)
         end
       end
+
+
 
     end
 

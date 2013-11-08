@@ -503,6 +503,7 @@ module Pubnub
       case operation
         when 'audit'
           raise(ArgumentError, 'audit() requires :publish_key, :subscribe_key, :secret_key, and, if async, callback parameter or block given.') unless (options[:callback] || options[:block_given] || options[:http_sync]) && (options[:secret_key] && options[:publish_key] && options[:subscribe_key])
+          raise(ArgumentError, 'audit() can be called with no channel or auth_key options (app level), a channel-only option (channel-level), or auth_key AND channel options (user-level). You cannot call with only auth_key and no channel option.') if @auth_key && options[:channel].blank?
         when 'publish'
           raise(ArgumentError, 'publish() requires :channel, :message parameters and, if async, callback parameter or block given.') unless (options[:channel] || options[:channels]) && (options[:callback] || options[:block_given] || options[:http_sync]) && options[:message]
         when 'subscribe'
