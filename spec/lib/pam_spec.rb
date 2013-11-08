@@ -25,6 +25,8 @@ describe "PAM" do
       puts "msg callback: #{x}" }
 
 
+    @logger = Logger.new(STDERR)
+
     @p = Pubnub.new(:origin => @origin, :uuid => "myuuid", :subscribe_key => @subscribe_key, :publish_key => @publish_key, :secret_key => @secret_key, :error_callback => @err_callback)
 
   end
@@ -341,7 +343,7 @@ describe "PAM" do
 
       context "via http" do
         before do
-          @p = Pubnub.new(:origin => @origin, :uuid => "myuuid", :publish_key => @publish_key, :subscribe_key => @subscribe_key, :secret_key => @secret_key, :error_callback => @err_callback)
+          @p = Pubnub.new(:logger => @logger, :origin => @origin, :uuid => "myuuid", :publish_key => @publish_key, :subscribe_key => @subscribe_key, :secret_key => @secret_key, :error_callback => @err_callback)
         end
 
         context "synchronously" do
@@ -374,7 +376,22 @@ describe "PAM" do
                 end
               end
 
-              context "channel and user level"
+              context "channel and user level" do
+
+                it "should display current stats" do
+                  VCR.use_cassette('pam12', :record => :none) do
+                    @p.auth_key = @auth_key
+                    response = @p.audit(:http_sync => true, :channel => @channel)
+
+                    response.is_error.should be_false
+                    response.response["payload"]["channel"].should == "mychannel"
+                    response.response["payload"]["level"].should == 'user'
+
+                  end
+
+                end
+
+              end
 
 
             end

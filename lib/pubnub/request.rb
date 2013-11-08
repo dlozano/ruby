@@ -52,7 +52,7 @@ module Pubnub
     def generate_signature!
       @timestamp = current_time
       message = "#{@subscribe_key}\n#{@publish_key}\n#{@operation}\n#{query}"
-      @signature = URI.escape(Base64.strict_encode64(OpenSSL::HMAC.digest(OpenSSL::Digest::Digest.new('sha256'), @secret_key, message)).strip())
+      @signature = CGI::escape(Base64.strict_encode64(OpenSSL::HMAC.digest(OpenSSL::Digest::Digest.new('sha256'), @secret_key, message)).strip())
       @signature
     end
 
