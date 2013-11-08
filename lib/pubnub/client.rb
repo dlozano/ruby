@@ -101,6 +101,13 @@ module Pubnub
       start_request options
     end
 
+    def grant(options = {}, &block)
+      options[:callback] = block if block_given?
+      options = merge_options(options, 'grant')
+      verify_operation('grant', options)
+      start_request options
+    end
+
     def publish(options = {}, &block)
       options[:callback] = block if block_given?
       options = merge_options(options, 'publish')
@@ -354,7 +361,7 @@ module Pubnub
               if %w(subscribe presence).include? request.operation
                 response = @sync_connection_sub.send_request(request.origin + request.path, :query => request.query, :timeout => 370)
               else
-                if request.operation == 'audit'
+                if request.operation == 'audit' || request.operation == 'grant'
                   response = @sync_connection.send_request(request.origin + request.path, :query => request.query(:signature => true), :timeout => @non_subscribe_timeout)
                 else
                   response = @sync_connection.send_request(request.origin + request.path, :query => request.query, :timeout => @non_subscribe_timeout)
@@ -363,6 +370,11 @@ module Pubnub
             end
 
           rescue Exception => e
+
+            if e.class == VCR::Errors::UnhandledHTTPRequestError
+              raise(e)
+            end
+
             error_response = Pubnub::Response.new(
                 :exception => e,
                 :error_init => true,
@@ -411,6 +423,14 @@ module Pubnub
             end
           else
             begin
+
+              error_response = Pubnub::Response.new(
+                  :exception => e,
+                  :error_init => true,
+                  :response => response,
+                  :request => request
+              )
+
               request.handle_response(response)
               if !request.callback.nil?
                 request.envelopes.each do |envelope|
@@ -501,6 +521,9 @@ module Pubnub
 
     def verify_operation(operation, options)
       case operation
+        when 'grant'
+          raise(ArgumentError, 'grant() requires :publish_key, :subscribe_key, :secret_key, and, if async, callback parameter or block given.') unless (options[:callback] || options[:block_given] || options[:http_sync]) && (options[:secret_key] && options[:publish_key] && options[:subscribe_key])
+          raise(ArgumentError, 'grant() can be called with no channel or auth_key options (app level), a channel-only option (channel-level), or auth_key AND channel options (user-level). You cannot call with only auth_key and no channel option.') if @auth_key && options[:channel].blank?
         when 'audit'
           raise(ArgumentError, 'audit() requires :publish_key, :subscribe_key, :secret_key, and, if async, callback parameter or block given.') unless (options[:callback] || options[:block_given] || options[:http_sync]) && (options[:secret_key] && options[:publish_key] && options[:subscribe_key])
           raise(ArgumentError, 'audit() can be called with no channel or auth_key options (app level), a channel-only option (channel-level), or auth_key AND channel options (user-level). You cannot call with only auth_key and no channel option.') if @auth_key && options[:channel].blank?

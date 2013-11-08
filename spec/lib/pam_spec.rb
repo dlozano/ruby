@@ -340,7 +340,6 @@ describe "PAM" do
       end
 
 
-
     end
 
     describe "integration" do
@@ -358,8 +357,8 @@ describe "PAM" do
 
         context "synchronously" do
           context "via return" do
-            context "audit" do
 
+            context "audit" do
               context "subkey level" do
                 it "should display current stats" do
                   VCR.use_cassette('pam10', :record => :none) do
@@ -406,13 +405,54 @@ describe "PAM" do
 
             end
 
+
+            context "grant" do
+              context "subkey level" do
+                it "should display current stats" do
+                  VCR.use_cassette('pam13', :record => :none) do
+                    response = @p.grant(:http_sync => true)
+
+                    response.is_error.should be_false
+                    response.response["payload"]["channels"].should be_nil
+                    response.response["payload"]["level"].should == 'subkey'
+                  end
+                end
+              end
+
+              context "channel level" do
+                it "should display current stats" do
+                  VCR.use_cassette('pam14', :record => :none) do
+                    response = @p.grant(:http_sync => true, :channel => @channel)
+
+                    response.is_error.should be_false
+                    response.response["payload"]["channels"].should == {"mychannel" => {"r" => 0, "w" => 0}}
+                    response.response["payload"]["level"].should == 'channel'
+
+                  end
+
+                end
+              end
+
+              context "channel and user level" do
+
+                it "should display current stats" do
+                  VCR.use_cassette('pam15', :record => :none) do
+                    @p.auth_key = @auth_key
+                    response = @p.grant(:http_sync => true, :channel => @channel)
+
+                    response.is_error.should be_false
+                    response.response["payload"]["channel"].should == "mychannel"
+                    response.response["payload"]["level"].should == 'user'
+
+                  end
+
+                end
+
+              end
+            end
           end
         end
-
       end
     end
-
   end
-
-
 end

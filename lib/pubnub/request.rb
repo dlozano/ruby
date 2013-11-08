@@ -43,7 +43,7 @@ module Pubnub
       set_subscribe_key(options, @subscribe_key) if %w(publish audit grant presence here_now history subscribe leave).include? @operation
       set_secret_key(options, @secret_key) if %w(publish subscribe audit grant).include? @operation
 
-      if operation == 'audit'
+      if operation == 'audit' || operation == 'grant'
         generate_signature!
       end
 
@@ -53,6 +53,7 @@ module Pubnub
       @timestamp = current_time
       message = "#{@subscribe_key}\n#{@publish_key}\n#{@operation}\n#{query}"
       @signature = CGI::escape(Base64.strict_encode64(OpenSSL::HMAC.digest(OpenSSL::Digest::Digest.new('sha256'), @secret_key, message)).strip())
+      $log.debug @signature
       @signature
     end
 
@@ -84,6 +85,13 @@ module Pubnub
     def path
       encode_path(case @operation
                     when 'audit'
+                      [
+                          'v1/auth',
+                          @operation,
+                          'sub-key',
+                          @subscribe_key,
+                      ]
+                    when 'grant'
                       [
                           'v1/auth',
                           @operation,
