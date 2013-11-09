@@ -408,6 +408,7 @@ describe "PAM" do
 
             context "grant" do
               context "subkey level" do
+
                 it "should display current stats" do
                   VCR.use_cassette('pam13', :record => :none) do
                     response = @p.grant(:http_sync => true)
@@ -417,6 +418,7 @@ describe "PAM" do
                     response.response["payload"]["level"].should == 'subkey'
                   end
                 end
+
               end
 
               context "channel level" do
@@ -431,6 +433,23 @@ describe "PAM" do
                   end
 
                 end
+
+
+
+
+                it "IOS Dev" do
+                  VCR.use_cassette('pam17', :record => :none) do
+                    response = @p.grant(:http_sync => true, :channel => "IOS Dev")
+
+                    response.is_error.should be_false
+                    response.response["payload"]["channels"].should == {"IOS Dev"=>{"r"=>0, "w"=>0}}
+                    response.response["payload"]["level"].should == 'channel'
+
+                  end
+
+                end
+
+
               end
 
               context "channel and user level" do

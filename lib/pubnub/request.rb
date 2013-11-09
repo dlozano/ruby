@@ -24,7 +24,7 @@ module Pubnub
       @callback       = options[:callback]
       @error_callback = options[:error_callback]
       @error_callback = lambda { |x| puts "AN ERROR OCCURRED: #{x.msg}" } unless @error_callback
-      @channel        = options[:channel]
+      @channel        = CGI.escape(options[:channel]).gsub('+','%20') if options[:channel]
       @message        = options[:message]
       @timetoken      = options[:timetoken] || "0"
       @timetoken      = options[:override_timetoken] if options[:override_timetoken]
