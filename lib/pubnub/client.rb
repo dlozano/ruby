@@ -251,7 +251,11 @@ module Pubnub
                     if is_update?(@subscription_request.timetoken)
                       $log.debug 'TIMETOKEN UPDATED'
                       @subscription_request.envelopes.each do |envelope|
-                        fire_subscriptions_callback_for envelope
+                        begin
+                          fire_subscriptions_callback_for envelope
+                        rescue => error
+                          $log.error error
+                        end
                       end
                     else
                       $log.debug 'TIMETOKEN NOT UPDATED'
@@ -285,7 +289,9 @@ module Pubnub
                                        :response =>  [0, http.error].to_json
                                      )
                 $log.error 'CALLED ERROR CALLBACK'
-
+                @subscribe_connection.reset!
+                $log.debug 'CONNECTION RESET'
+                $log.debug "EM.reactor_running? #{EM.reactor_running?}"
                 @wait_for_response = false
               end
             end
@@ -476,7 +482,7 @@ module Pubnub
     end
 
     def is_update?(timetoken)
-      if @timetoken.to_i < timetoken.to_i
+      if @timetoken.to_i < timetoken.to_i || timetoken.to_i == 0
         @timetoken = timetoken
       else
         false
