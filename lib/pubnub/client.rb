@@ -207,7 +207,9 @@ module Pubnub
 
     def fire_subscriptions_callback_for(envelope)
       @subscriptions.each do |subscription|
+        $log.debug "START Fire subscription callback for envelopes: #{subscription}"
         subscription.fire_callback_for envelope
+        $log.debug "DONE Fired subscription callback for envelopes: #{subscription}"
       end
     end
 
@@ -464,6 +466,7 @@ module Pubnub
 
     def send_request(request)
       if %w(subscribe presence).include? request.operation
+        $log.debug @subscribe_connection.inspect
         unless @subscribe_connection
           @subscribe_connection = EM::HttpRequest.new(request.origin, :connect_timeout => 370, :inactivity_timeout => 370)
           connection = @subscribe_connection.get :path => '/time/0', :keepalive => true, :query => request.query
