@@ -213,26 +213,30 @@ module Pubnub
       end
     end
 
-    def start_request(options)
+    def start_request(options, restore = false)
       request = Pubnub::Request.new(options)
-      unless options[:http_sync]
+      if !options[:http_sync] || restore
         start_em_if_not_running
 
-        if %w(subscribe presence).include? request.operation
-          options[:channel].split(',').each do |channel|
-            @subscriptions << Subscription.new(:channel => channel, :callback => options[:callback], :error_callback => options[:error_callback]) unless get_channels_for_subscription.include? channel
+        if %w(subscribe presence).include? request.operation || restore
+
+          unless restore
+            options[:channel].split(',').each do |channel|
+              @subscriptions << Subscription.new(:channel => channel, :callback => options[:callback], :error_callback => options[:error_callback]) unless get_channels_for_subscription.include? channel
+            end
+
+            @subscription_request = request unless @subscription_request
+
+            if @subscription_request.channel != get_channels_for_subscription.join(',') && @subscription_running
+              @subscribe_connection.close
+              @timetoken = 0
+              @subscription_request.timetoken = 0
+              @wait_for_response = false
+            end
+
+            @subscription_request.channel = get_channels_for_subscription.join(',')
+
           end
-
-          @subscription_request = request unless @subscription_request
-
-          if @subscription_request.channel != get_channels_for_subscription.join(',') && @subscription_running
-            @subscribe_connection.close
-            @timetoken = 0
-            @subscription_request.timetoken = 0
-            @wait_for_response = false
-          end
-
-          @subscription_request.channel = get_channels_for_subscription.join(',')
 
           @subscription_running = EM.add_periodic_timer(PERIODIC_TIMER) do
             unless @wait_for_response || get_channels_for_subscription.empty?
@@ -297,7 +301,7 @@ module Pubnub
                 @wait_for_response = false
               end
             end
-          end unless @subscription_running
+          end if !@subscription_running || restore
         else
           EM.next_tick do
             $log.debug 'SENDING OTHER REQUEST'
